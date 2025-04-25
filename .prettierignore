@@ -1,0 +1,14 @@
+# Add files here to ignore them from prettier formatting
+/dist
+/coverage
+/.nx/cache
+/.nx/workspace-data
+
+# Hugo template files
+**/layouts/**/*.html
+**/themes/**/*.html
+
+# Hugo-specific directories
+**/public/
+**/resources/
+**/hugo-book/

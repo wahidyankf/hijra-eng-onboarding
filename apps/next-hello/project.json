@@ -1,0 +1,71 @@
+{
+  "name": "next-hello",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "root": "apps/next-hello",
+  "sourceRoot": "apps/next-hello/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/next-hello"
+      },
+      "configurations": {
+        "development": {
+          "outputPath": "dist/apps/next-hello"
+        },
+        "production": {
+          "outputPath": "dist/apps/next-hello"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "next-hello:build",
+        "dev": true
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "next-hello:build:development"
+        },
+        "production": {
+          "buildTarget": "next-hello:build:production"
+        }
+      }
+    },
+    "export": {
+      "executor": "@nx/next:export",
+      "options": {
+        "buildTarget": "next-hello:build:production"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/next-hello"],
+      "options": {
+        "jestConfig": "apps/next-hello/jest.config.js",
+        "passWithNoTests": true,
+        "runInBand": true,
+        "codeCoverage": false
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/next-hello/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "typecheck"
+      }
+    }
+  },
+  "tags": []
+}
