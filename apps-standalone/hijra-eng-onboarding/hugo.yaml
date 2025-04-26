@@ -18,29 +18,16 @@ markup:
 
 menu:
   main:
-    - name: English
-      pageRef: /en
-      weight: 1
-    - name: Bahasa
-      pageRef: /id
+    - name: Hijra Bank
+      url: 'https://hijra.id'
       weight: 2
-    - name: T&C
-      pageRef: /terms-and-conditions
+    - name: Alami Sharia
+      url: 'https://alamisharia.co.id/'
       weight: 3
     - name: Search
       weight: 4
       params:
         type: search
-    - name: Threads
-      weight: 5
-      url: 'https://www.threads.net/@wahidyankf'
-      params:
-        icon: globe-alt
-    - name: GitHub
-      weight: 6
-      url: 'https://github.com/wahidyankf/oss/'
-      params:
-        icon: github
 
 params:
   navbar:
@@ -68,7 +55,6 @@ params:
       index: content
       # full | forward | reverse | strict
       tokenize: full
-
-services:
-  googleAnalytics:
-    ID: G-1NHDR7S3GV
+# services:
+# googleAnalytics:
+# ID: G-1NHDR7S3GV
