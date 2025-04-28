@@ -252,7 +252,7 @@ print(df.info())  # Show column types and null counts
 
 ### 3.2.2 Data Cleaning and Filtering
 
-Clean and filter DataFrames using boolean indexing and string operations. The `is_numeric_value` function from `utils.py` checks if a value is numeric, ensuring clarity.
+Clean and filter DataFrames using boolean indexing and string operations. The `is_numeric` function from `utils.py` checks if a value is numeric, ensuring clarity.
 
 ```python
 import pandas as pd  # Import Pandas
@@ -263,7 +263,7 @@ df = pd.read_csv("data/sales.csv")  # Read CSV
 df = df.dropna(subset=["product"])  # Drop rows with missing product
 df = df[df["product"].str.startswith("Halal")]  # Filter Halal products
 df = df[df["quantity"] <= 100]  # Filter quantity <= 100
-df = df[df["price"].apply(utils.is_numeric_value)]  # Ensure price is numeric
+df = df[df["price"].apply(utils.is_numeric)]  # Ensure price is numeric
 
 # Print cleaned DataFrame
 print("Cleaned DataFrame:")  # Debug
@@ -280,7 +280,7 @@ print(df)  # Show filtered DataFrame
 **Follow-Along Instructions**:
 
 1. Save as `de-onboarding/pandas_cleaning.py`.
-2. Ensure `utils.py` includes `is_numeric_value` (see micro-project).
+2. Ensure `utils.py` includes `is_numeric` (see micro-project).
 3. Configure editor for 4-space indentation per PEP 8.
 4. Run: `python pandas_cleaning.py`.
 5. Verify output shows 3 rows with Halal products, valid prices, and quantity <= 100.
@@ -295,7 +295,7 @@ print(df)  # Show filtered DataFrame
 - `dropna()`: Removes rows with missing values.
 - `str.startswith()`: Filters strings (e.g., Halal products).
 - Boolean indexing: Filters rows based on conditions.
-- `apply()`: Applies custom validation (e.g., `utils.is_numeric_value`).
+- `apply()`: Applies custom validation (e.g., `utils.is_numeric`).
 - **Time Complexity**: O(n) for filtering n rows.
 - **Space Complexity**: O(k) for filtered DataFrame (k rows).
 - **Implication**: Efficient for cleaning transaction data, ensuring Sharia compliance.
@@ -505,7 +505,7 @@ flowchart TD
    - **Solution**: Use `dropna()` and print `df.head()` to debug.
 3. **Type Mismatches**:
    - **Problem**: Non-numeric prices cause calculation errors.
-   - **Solution**: Validate with `utils.is_numeric_value`. Print `df.dtypes`.
+   - **Solution**: Validate with `utils.is_numeric`. Print `df.dtypes`.
 4. **NumPy Shape Mismatches**:
    - **Problem**: `ValueError` when multiplying arrays of different lengths.
    - **Solution**: Print `prices.shape`, `quantities.shape` to verify compatibility.
@@ -545,7 +545,7 @@ def clean_string(s):  # Clean string by stripping whitespace
     """Strip whitespace from string."""
     return s.strip()
 
-def is_numeric_value(x):  # Check if value is numeric
+def is_numeric(x):  # Check if value is numeric
     """Check if value is an integer or float."""
     return isinstance(x, (int, float))  # Return True for numeric types
 
@@ -636,7 +636,7 @@ def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
     df = df[df["quantity"].apply(utils.is_integer)]  # Ensure quantity is integer
     df["quantity"] = df["quantity"].astype(int)  # Convert to int
     df = df[df["quantity"] <= config["max_quantity"]]  # Filter quantity <= max_quantity
-    df = df[df["price"].apply(utils.is_numeric_value)]  # Ensure price is numeric
+    df = df[df["price"].apply(utils.is_numeric)] # type: ignore # Ensure price is numeric
     df = df[df["price"] > 0]  # Filter positive prices
     df = df[df["price"] >= config["min_price"]]  # Filter price >= min_price
     df = df[df["price"].apply(lambda x: utils.apply_valid_decimals(x, config["max_decimals"]))]  # Check decimals
