@@ -1,0 +1,4 @@
+Sets are more efficient than lists for unique products because they use hash tables, enabling O(1) average-case membership checks and insertions. Lists require O(n) checks per item to avoid duplicates, resulting in O(n^2) complexity for n items. For example:
+    products = set()  # O(1) per add
+    products.add("Halal Laptop")  # O(1)
+For 1,000 products, sets take O(n), while lists take O(n^2).
