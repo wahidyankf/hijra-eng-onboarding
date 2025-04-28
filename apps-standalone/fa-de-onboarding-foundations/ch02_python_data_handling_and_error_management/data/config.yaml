@@ -1,0 +1,8 @@
+min_price: 10.0
+max_quantity: 100
+required_fields:
+  - product
+  - price
+  - quantity
+product_prefix: 'Halal'
+max_decimals: 2
