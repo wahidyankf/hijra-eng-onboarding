@@ -4,6 +4,6 @@ draft: false
 weight: 1
 ---
 
-## Onboardings
-
-- [Data Engineering Onboarding - Foundations](./de-onboarding-foundations/)
+{{< cards >}}
+{{< card link="/learn/de-onboarding-foundations" title="DE Onboarding - Foundations" >}}
+{{< /cards >}}
