@@ -1,2 +1,4 @@
 .vscode
 output.json
+__pycache__
+sales_results.json
