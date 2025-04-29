@@ -612,6 +612,7 @@ import matplotlib.pyplot as plt  # For plotting
 import utils  # Import custom utils module
 import os  # For file existence check
 
+
 # Define function to read YAML configuration
 def read_config(config_path):  # Takes config file path
     """Read YAML configuration."""
@@ -621,6 +622,7 @@ def read_config(config_path):  # Takes config file path
     file.close()  # Close file
     print(f"Loaded config: {config}")  # Debug: print config
     return config  # Return config dictionary
+
 
 # Define function to load and validate sales data
 def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
@@ -643,8 +645,9 @@ def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
     print(df)
     return df, len(df), total_records
 
+
 # Define function to process sales data
-def process_sales(df, config):  # Takes DataFrame and config
+def process_sales(df):  # Takes DataFrame
     """Process sales: compute total and top products using Pandas/NumPy."""
     if df.empty:  # Check for empty DataFrame
         print("No valid sales data")  # Log empty
@@ -661,7 +664,10 @@ def process_sales(df, config):  # Takes DataFrame and config
     sales_by_product = df.groupby("product")["amount"].sum().round(2)
     # Use OrderedDict to preserve order
     from collections import OrderedDict
-    top_products = OrderedDict(sales_by_product.sort_values(ascending=False).head(3).items())
+
+    top_products = OrderedDict(
+        sales_by_product.sort_values(ascending=False).head(3).items()
+    )
 
     valid_sales = len(df)  # Count valid sales
     print(f"Valid sales: {valid_sales} records")  # Log valid count
@@ -669,8 +675,9 @@ def process_sales(df, config):  # Takes DataFrame and config
     return {
         "total_sales": round(total_sales, 2),  # Convert to float for JSON
         "unique_products": unique_products,  # List of products
-        "top_products": dict(top_products)  # Top 3 products, ordered
+        "top_products": dict(top_products),  # Top 3 products, ordered
     }, valid_sales  # Return results and count
+
 
 # Define function to export results
 def export_results(results, json_path):  # Takes results and file path
@@ -681,6 +688,7 @@ def export_results(results, json_path):  # Takes results and file path
     json.dump(results, file, indent=2)  # Write JSON
     file.close()  # Close file
     print(f"Exported results to {json_path}")  # Confirm export
+
 
 # Define function to plot sales
 def plot_sales(df, plot_path):  # Takes DataFrame and plot path
@@ -702,6 +710,7 @@ def plot_sales(df, plot_path):  # Takes DataFrame and plot path
     print(f"Plot saved to {plot_path}")  # Confirm save
     print(f"File exists: {os.path.exists(plot_path)}")  # Confirm file creation
 
+
 # Define main function
 def main():  # No parameters
     """Main function to process sales data."""
@@ -711,8 +720,10 @@ def main():  # No parameters
     plot_path = "data/sales_trend.png"  # Plot output path
 
     config = read_config(config_path)  # Read config
-    df, valid_sales, total_records = load_and_validate_sales(csv_path, config)  # Load and validate
-    results, valid_sales = process_sales(df, config)  # Process
+    df, valid_sales, total_records = load_and_validate_sales(
+        csv_path, config
+    )  # Load and validate
+    results, valid_sales = process_sales(df)  # Process
     export_results(results, json_path)  # Export results
     plot_sales(df, plot_path)  # Generate plot
 
@@ -725,6 +736,7 @@ def main():  # No parameters
     print(f"Unique Products: {results['unique_products']}")  # Products
     print(f"Top Products: {results['top_products']}")  # Top products
     print("Processing completed")  # Confirm completion
+
 
 if __name__ == "__main__":
     main()  # Run main function
