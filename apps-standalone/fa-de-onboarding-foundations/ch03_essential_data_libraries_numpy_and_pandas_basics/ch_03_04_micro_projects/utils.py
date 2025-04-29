@@ -1,14 +1,36 @@
-def clean_string(s):  # Clean string
-    """Strip whitespace from string."""
-    return s.strip()  # Return cleaned string
-
-
-def is_numeric(s, max_decimals=2):  # Check if string is numeric
+def is_decimal_string(s, max_decimals=2):  # Check if string is a decimal number
     """Check if string is a decimal number with up to max_decimals."""
-    parts = s.split(".")  # Split on decimal
+    parts = s.split(".")  # Split on decimal point
     if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
         return False  # Invalid format
     return len(parts[1]) <= max_decimals  # Check decimal places
+
+
+def clean_string(s):  # Clean string by stripping whitespace
+    """Strip whitespace from string."""
+    return s.strip()
+
+
+def is_numeric_type(x):  # Check if value is numeric
+    """Check if value is an integer or float."""
+    return isinstance(x, (int, float))  # Return True for numeric types
+
+
+def has_valid_decimals(x, max_decimals):  # Check decimal places
+    """Check if value has valid decimal places."""
+    return is_decimal_string(
+        str(x), max_decimals
+    )  # Use is_decimal_string for validation
+
+
+def apply_valid_decimals(x, max_decimals):  # Apply decimal validation
+    """Apply has_valid_decimals to a value."""
+    return has_valid_decimals(x, max_decimals)
+
+
+def is_integer(x):  # Check if value is an integer
+    """Check if value is an integer when converted to string."""
+    return str(x).isdigit()  # Return True for integer strings
 
 
 def validate_sale(sale, config):  # Validate a sale dictionary
@@ -35,7 +57,7 @@ def validate_sale(sale, config):  # Validate a sale dictionary
     # Validate price: numeric, meets minimum, and positive
     price = clean_string(sale["price"])  # Clean price string
     if (
-        not is_numeric(price, max_decimals)
+        not is_decimal_string(price, max_decimals)
         or float(price) < min_price
         or float(price) <= 0
     ):  # Check format, value, and positivity

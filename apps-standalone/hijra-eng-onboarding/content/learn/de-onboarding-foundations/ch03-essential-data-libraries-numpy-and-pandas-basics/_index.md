@@ -536,8 +536,9 @@ In production, this solution would include:
 ### Implementation
 
 ```python
-# File: de-onboarding/utils.py (updated from Chapter 2)
-def is_numeric(s, max_decimals=2):  # Check if string is a decimal number
+# File: de-onboarding/utils.py
+
+def is_decimal_string(s, max_decimals=2):  # Check if string is a decimal number
     """Check if string is a decimal number with up to max_decimals."""
     parts = s.split(".")  # Split on decimal point
     if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
@@ -548,13 +549,13 @@ def clean_string(s):  # Clean string by stripping whitespace
     """Strip whitespace from string."""
     return s.strip()
 
-def is_numeric(x):  # Check if value is numeric
+def is_numeric_type(x):  # Check if value is numeric
     """Check if value is an integer or float."""
     return isinstance(x, (int, float))  # Return True for numeric types
 
 def has_valid_decimals(x, max_decimals):  # Check decimal places
     """Check if value has valid decimal places."""
-    return is_numeric(str(x), max_decimals)  # Use is_numeric for validation
+    return is_decimal_string(str(x), max_decimals)  # Use is_decimal_string for validation
 
 def apply_valid_decimals(x, max_decimals):  # Apply decimal validation
     """Apply has_valid_decimals to a value."""
@@ -587,7 +588,7 @@ def validate_sale(sale, config):  # Validate a sale dictionary
 
     # Validate price: numeric, meets minimum, and positive
     price = clean_string(sale["price"])  # Clean price string
-    if not is_numeric(price, max_decimals) or float(price) < min_price or float(price) <= 0:  # Check format, value, and positivity
+    if not is_decimal_string(price, max_decimals) or float(price) < min_price or float(price) <= 0:  # Check format, value, and positivity
         print(f"Invalid sale: invalid price: {sale}")  # Log invalid
         return False
 
@@ -598,8 +599,11 @@ def validate_sale(sale, config):  # Validate a sale dictionary
         return False
 
     return True  # Return True if all checks pass
+```
 
+```python
 # File: de-onboarding/sales_processor.py
+
 import pandas as pd  # For DataFrame operations
 import numpy as np  # For numerical computations
 import yaml  # For YAML parsing
@@ -622,32 +626,22 @@ def read_config(config_path):  # Takes config file path
 def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
     """Load sales CSV and validate using Pandas."""
     print(f"Loading CSV: {csv_path}")  # Debug: print path
-    df = pd.read_csv(csv_path)  # Load CSV into DataFrame
-    print("Initial DataFrame:")  # Debug
-    print(df.head())  # Show first 5 rows
-
-    # Validate required fields
-    required_fields = config["required_fields"]  # Get required fields
-    missing_fields = [f for f in required_fields if f not in df.columns]
-    if missing_fields:  # Check for missing columns
-        print(f"Missing columns: {missing_fields}")  # Log error
-        return pd.DataFrame(), 0, len(df)  # Return empty DataFrame
-
-    # Clean and filter DataFrame
-    df = df.dropna(subset=["product"])  # Drop rows with missing product
-    df = df[df["product"].str.startswith(config["product_prefix"])]  # Filter Halal products
+    # Load CSV and coerce price to numeric, invalids become NaN
+    df = pd.read_csv(csv_path)
+    df["price"] = pd.to_numeric(df["price"], errors="coerce")
+    print("Initial DataFrame:")
+    print(df)
+    # Drop rows with missing required fields (including NaN price)
+    df = df.dropna(subset=config["required_fields"])
     df = df[df["quantity"].apply(utils.is_integer)]  # Ensure quantity is integer
-    df["quantity"] = df["quantity"].astype(int)  # Convert to int
-    df = df[df["quantity"] <= config["max_quantity"]]  # Filter quantity <= max_quantity
-    df = df[df["price"].apply(utils.is_numeric)] # type: ignore # Ensure price is numeric
-    df = df[df["price"] > 0]  # Filter positive prices
-    df = df[df["price"] >= config["min_price"]]  # Filter price >= min_price
-    df = df[df["price"].apply(lambda x: utils.apply_valid_decimals(x, config["max_decimals"]))]  # Check decimals
-
-    total_records = len(df)  # Count total records after filtering
-    print("Validated DataFrame:")  # Debug
-    print(df)  # Show filtered DataFrame
-    return df, len(df), total_records  # Return DataFrame and counts
+    df["quantity"] = df["quantity"].astype(int)
+    df = df[df["quantity"] <= config["max_quantity"]]
+    df = df[df["price"] > 0]
+    df = df[df["price"] >= config["min_price"]]
+    total_records = len(df)
+    print("Validated DataFrame:")
+    print(df)
+    return df, len(df), total_records
 
 # Define function to process sales data
 def process_sales(df, config):  # Takes DataFrame and config
@@ -657,23 +651,25 @@ def process_sales(df, config):  # Takes DataFrame and config
         return {"total_sales": 0.0, "unique_products": [], "top_products": {}}, 0
 
     # Compute amount
-    df["amount"] = df["price"] * df["quantity"]  # Price * quantity
+    df["amount"] = (df["price"] * df["quantity"]).round(2)  # Price * quantity, rounded
     print("DataFrame with Amount:")  # Debug
     print(df)  # Show DataFrame with amount
 
     # Compute metrics using NumPy
-    total_sales = np.sum(df["amount"].values)  # Total sales
+    total_sales = float(np.sum(df["amount"].values))  # Total sales
     unique_products = df["product"].unique().tolist()  # Unique products
-    sales_by_product = df.groupby("product")["amount"].sum()  # Group by product
-    top_products = sales_by_product.sort_values(ascending=False).head(3).to_dict()  # Top 3
+    sales_by_product = df.groupby("product")["amount"].sum().round(2)
+    # Use OrderedDict to preserve order
+    from collections import OrderedDict
+    top_products = OrderedDict(sales_by_product.sort_values(ascending=False).head(3).items())
 
     valid_sales = len(df)  # Count valid sales
     print(f"Valid sales: {valid_sales} records")  # Log valid count
 
     return {
-        "total_sales": float(total_sales),  # Convert to float for JSON
+        "total_sales": round(total_sales, 2),  # Convert to float for JSON
         "unique_products": unique_products,  # List of products
-        "top_products": top_products  # Top 3 products
+        "top_products": dict(top_products)  # Top 3 products, ordered
     }, valid_sales  # Return results and count
 
 # Define function to export results

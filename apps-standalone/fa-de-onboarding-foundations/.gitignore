@@ -3,3 +3,4 @@ output.json
 __pycache__
 sales_results.json
 ex6_concepts.txt
+*.png
