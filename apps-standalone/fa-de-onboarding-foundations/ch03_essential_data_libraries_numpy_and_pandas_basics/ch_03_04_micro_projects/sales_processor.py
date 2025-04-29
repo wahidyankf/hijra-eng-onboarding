@@ -41,7 +41,7 @@ def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
 
 
 # Define function to process sales data
-def process_sales(df, config):  # Takes DataFrame and config
+def process_sales(df):  # Takes DataFrame
     """Process sales: compute total and top products using Pandas/NumPy."""
     if df.empty:  # Check for empty DataFrame
         print("No valid sales data")  # Log empty
@@ -117,7 +117,7 @@ def main():  # No parameters
     df, valid_sales, total_records = load_and_validate_sales(
         csv_path, config
     )  # Load and validate
-    results, valid_sales = process_sales(df, config)  # Process
+    results, valid_sales = process_sales(df)  # Process
     export_results(results, json_path)  # Export results
     plot_sales(df, plot_path)  # Generate plot
 
