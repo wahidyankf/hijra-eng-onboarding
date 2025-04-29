@@ -8,9 +8,9 @@ weight: 5
 
 ## 4.0 Introduction: Why This Matters for Data Engineering
 
-In data engineering, integrating external data sources via APIs is critical for real-time analytics in Hijra Group’s Sharia-compliant fintech ecosystem. APIs enable fetching financial transaction data, such as payment records from a Sharia-compliant bank’s API, to analyze trends and ensure compliance with Islamic Financial Services Board (IFSB) standards. The `requests` library simplifies HTTP requests, handling thousands of transactions with \~100ms latency per request, while JSON parsing integrates seamlessly with Pandas DataFrames (\~24MB for 1M rows, per Chapter 3). This chapter introduces **HTTP fundamentals**, **REST APIs**, and **MVC concepts**, building on Chapters 1–3 to fetch, validate, and transform transaction data, preparing for scalable pipelines and web frameworks like FastAPI (Chapter 53).
+In data engineering, integrating external data sources via APIs is critical for real-time analytics in Hijra Group’s fintech ecosystem. APIs enable fetching and managing content data, such as user posts from a social media platform, to analyze engagement metrics and inform business strategies. The `requests` library simplifies HTTP requests, handling thousands of records with \~100ms latency per request, while JSON parsing integrates seamlessly with Pandas DataFrames (\~24MB for 1M rows, per Chapter 3). This chapter introduces **HTTP fundamentals**, **REST APIs**, and **MVC concepts**, building on Chapters 1–3 to fetch, validate, create, update, and delete post data from `https://jsonplaceholder.typicode.com/posts`, which returns data with fields `userId`, `id`, `title`, and `body`. This prepares you for scalable pipelines and web frameworks like FastAPI (Chapter 53).
 
-This chapter avoids advanced concepts like type annotations (Chapter 7), testing (Chapter 9), or error handling with try/except (Chapter 7), focusing on HTTP requests, JSON processing, and basic validation. All code uses **PEP 8's 4-space indentation**, preferring spaces over tabs to avoid `IndentationError`, aligning with Hijra Group’s pipeline standards. The micro-project fetches data from a mock API or a local JSON file, validates it, and saves it to `data/transactions.csv`, testing edge cases with malformed data.
+This chapter avoids advanced concepts like type annotations (Chapter 7), testing (Chapter 9), or error handling with try/except (Chapter 7), focusing on HTTP requests, JSON processing, and basic validation. All code uses **PEP 8's 4-space indentation**, preferring spaces over tabs to avoid `IndentationError`, aligning with Hijra Group’s pipeline standards. The micro-project demonstrates all HTTP methods (GET, POST, PUT, PATCH, DELETE) using `/posts` and `/comments` endpoints, validating data and saving fetched posts to `data/posts.csv`, testing edge cases to align with Hijra Group’s content analytics needs. We assume `https://jsonplaceholder.typicode.com/posts` is always available for simplicity.
 
 ### Data Engineering Workflow Context
 
@@ -20,9 +20,9 @@ This diagram illustrates how APIs fit into a data engineering pipeline:
 flowchart TD
     A["External API"] --> B["Python Script with requests"]
     B --> C{"Data Fetching"}
-    C -->|HTTP GET| D["JSON Response"]
+    C -->|HTTP Methods| D["JSON Response"]
     D -->|Validate| E["Pandas DataFrame"]
-    E -->|Transform| F["Output CSV (transactions.csv)"]
+    E -->|Transform| F["Output CSV (posts.csv)"]
     F --> G["Storage/Analysis"]
 
     classDef data fill:#f9f9f9,stroke:#333,stroke-width:2px
@@ -44,24 +44,24 @@ flowchart TD
   - Chapter 5: Prepares for OOP by organizing API logic in modules.
   - Chapter 7: Lays groundwork for type-safe API interactions.
   - Chapter 53: Enables FastAPI development for building APIs.
-  - Chapter 69–71: Supports capstone projects with real-time data fetching.
+  - Chapter 69–71: Supports capstone projects with real-time data fetching and management.
 
 ### What You’ll Learn
 
 This chapter covers:
 
-1. **HTTP and REST Basics**: Understanding requests and responses.
-2. **Using** `requests`: Fetching data with GET requests.
+1. **HTTP and REST Basics**: Understanding requests and responses for all HTTP methods.
+2. **Using** `requests`: Performing GET, POST, PUT, PATCH, and DELETE requests.
 3. **JSON Processing**: Parsing API responses into dictionaries.
 4. **Data Validation**: Ensuring data integrity with `utils.py`.
 5. **Pandas Integration**: Converting JSON to DataFrames and CSVs.
 6. **MVC Concepts**: Structuring code for scalability.
 
-By the end, you’ll build a transaction data fetcher that retrieves data from a mock API or local JSON file, validates it, and saves it to `data/transactions.csv`, using 4-space indentation per PEP 8. The micro-project uses `data/config.yaml` and `data/mock_transactions.json`, testing edge cases to align with Hijra Group’s transaction processing needs.
+By the end, you’ll build a post data manager that retrieves, creates, updates, and deletes data using `https://jsonplaceholder.typicode.com/posts`, validates it, and saves fetched posts to `data/posts.csv`, using 4-space indentation per PEP 8. The micro-project uses `data/config.yaml`, testing edge cases to align with Hijra Group’s content analytics needs.
 
 **Follow-Along Tips**:
 
-- Create `de-onboarding/data/` and populate with files from Appendix 1 (`transactions.csv`, `config.yaml`, `mock_transactions.json`).
+- Create `de-onboarding/data/` and populate with files from Appendix 1 (`posts.csv`, `config.yaml`).
 - Install libraries: `pip install requests pandas pyyaml`.
 - Use **4 spaces** (not tabs) per PEP 8. Run `python -tt script.py` to detect tab/space mixing.
 - Use print statements (e.g., `print(response.json())`) to debug API responses.
@@ -72,82 +72,176 @@ By the end, you’ll build a transaction data fetcher that retrieves data from a
 
 ## 4.1 HTTP and REST Basics
 
-HTTP (HyperText Transfer Protocol) enables communication between clients (e.g., Python scripts) and servers (e.g., APIs). REST (Representational State Transfer) is an architectural style for APIs, using standard HTTP methods like **GET** to fetch data. REST APIs return structured data (e.g., JSON), ideal for transaction records.
+HTTP (HyperText Transfer Protocol) enables communication between clients (e.g., Python scripts) and servers (e.g., APIs). REST (Representational State Transfer) is an architectural style for APIs, using standard HTTP methods to manage resources. REST APIs return structured data (e.g., JSON), ideal for content records like user posts.
+
+**Note**: JSONPlaceholder is a mock API; POST, PUT, PATCH, and DELETE return simulated responses but don’t persist changes. In production, these operations would modify server data.
 
 ### Key Concepts
 
-- **HTTP Methods**: GET retrieves data, POST sends data, PUT updates, DELETE removes.
+- **HTTP Methods**:
+  - **GET**: Retrieves data (e.g., fetch all posts with `/posts` or a single post with `/posts/1`).
+  - **POST**: Creates a new resource (e.g., create a post with `/posts`).
+  - **PUT**: Updates an existing resource by replacing it (e.g., update `/posts/1`).
+  - **PATCH**: Partially updates a resource (e.g., update `/posts/1` title).
+  - **DELETE**: Removes a resource (e.g., delete `/posts/1`).
 - **Status Codes**:
-  - 200: Success.
+  - 200: Success (GET, PUT, PATCH, DELETE).
+  - 201: Created (POST).
+  - 204: No Content (DELETE).
   - 400: Bad request (e.g., invalid parameters).
   - 404: Resource not found.
   - 500: Server error.
 - **JSON**: Lightweight format for structured data, parsed into Python dictionaries.
-- **REST Principles**: Stateless (each request is independent), resource-based (e.g., `/transactions` endpoint).
+- **REST Principles**: Stateless (each request is independent), resource-based (e.g., `/posts`, `/comments`).
+- **Idempotency**: GET, PUT, and DELETE are idempotent (repeated calls produce the same result), while POST and PATCH may create or modify resources differently each time.
 
-**Example HTTP GET Request** (conceptual):
+**Example HTTP Requests** (conceptual):
 
 ```
-GET /api/transactions HTTP/1.1
-Host: mockapi.example.com
+GET /posts HTTP/1.1
+Host: jsonplaceholder.typicode.com
 ```
 
-**Example JSON Response** (minimal):
+```
+POST /posts HTTP/1.1
+Host: jsonplaceholder.typicode.com
+Content-Type: application/json
+
+{"userId": 1, "title": "new post", "body": "content"}
+```
+
+```
+PUT /posts/1 HTTP/1.1
+Host: jsonplaceholder.typicode.com
+Content-Type: application/json
+
+{"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+```
+
+```
+PATCH /posts/1 HTTP/1.1
+Host: jsonplaceholder.typicode.com
+Content-Type: application/json
+
+{"title": "partially updated post"}
+```
+
+```
+DELETE /posts/1 HTTP/1.1
+Host: jsonplaceholder.typicode.com
+```
+
+**Note**: DELETE typically returns an empty response (`{}`) with status 200 or 204 to confirm success without data.
+
+**Example JSON Responses**:
+
+- **GET /posts** (minimal):
 
 ```json
-[{ "transaction_id": "T001", "product": "Halal Laptop", "price": 999.99 }]
+[{ "id": 1, "title": "sunt aut facere" }]
 ```
 
-**Example JSON Response** (full):
+- **POST /posts**:
 
 ```json
-[
-  {
-    "transaction_id": "T001",
-    "product": "Halal Laptop",
-    "price": 999.99,
-    "quantity": 2,
-    "date": "2023-10-01"
-  },
-  {
-    "transaction_id": "T002",
-    "product": "Halal Mouse",
-    "price": 24.99,
-    "quantity": 10,
-    "date": "2023-10-02"
-  }
-]
+{ "userId": 1, "title": "new post", "body": "content", "id": 101 }
+```
+
+- **PUT /posts/1**:
+
+```json
+{ "userId": 1, "id": 1, "title": "updated post", "body": "new content" }
+```
+
+- **PATCH /posts/1**:
+
+```json
+{ "userId": 1, "id": 1, "title": "partially updated post", "body": "..." }
+```
+
+- **DELETE /posts/1**:
+
+```json
+{}
 ```
 
 **Time/Space Complexity**:
 
-- **Time**: O(n) for parsing n JSON records.
-- **Space**: O(n) for storing n records in memory (\~1MB for 10K JSON records with 5 fields).
+- **Time**: O(n) for parsing n JSON records (GET, POST, PUT, PATCH); O(1) for DELETE.
+- **Space**: O(n) for storing n records in memory (\~1MB for 10K JSON records with 4 fields); O(1) for DELETE.
 
-**Implication**: REST APIs enable real-time data fetching for Hijra Group’s analytics, with JSON parsing scaling linearly for typical transaction volumes.
+**Implication**: REST APIs enable real-time data fetching and management for Hijra Group’s content analytics, with JSON parsing scaling linearly for typical post volumes.
 
 ## 4.2 Using the `requests` Library
 
-The `requests` library simplifies HTTP requests. A GET request fetches JSON data, which is parsed into Python dictionaries.
+The `requests` library simplifies HTTP requests. This example demonstrates all HTTP methods using `/posts`.
 
 ```python
 import requests  # Import requests library
 
-# Fetch transactions from mock API
-url = "https://mockapi.example.com/transactions"  # Mock API endpoint
-response = requests.get(url)  # Send GET request
+# Base URL
+base_url = "https://jsonplaceholder.typicode.com"
 
-# Check response status
-print("Status Code:", response.status_code)  # Debug: print status
-if response.status_code == 200:  # Success
-    data = response.json()  # Parse JSON
-    print("Data:", data)  # Debug: print data
-else:
-    print("Failed to fetch data")  # Log failure
+# GET: Fetch all posts
+response_get = requests.get(f"{base_url}/posts")
+print("DEBUG: GET Status Code:", response_get.status_code)
+if response_get.status_code == 200:
+    print("DEBUG: GET Data:", response_get.json()[:2])
 
-# Expected Output (with mock API):
-# Status Code: 200
-# Data: [{'transaction_id': 'T001', 'product': 'Halal Laptop', 'price': 999.99, 'quantity': 2, 'date': '2023-10-01'}, ...]
+# GET: Fetch single post
+response_get_single = requests.get(f"{base_url}/posts/1")
+print("DEBUG: GET Single Status Code:", response_get_single.status_code)
+if response_get_single.status_code == 200:
+    print("DEBUG: GET Single Data:", response_get_single.json())
+
+# GET: Fetch comments for a post
+response_get_comments = requests.get(f"{base_url}/comments?postId=1")
+print("DEBUG: GET Comments Status Code:", response_get_comments.status_code)
+if response_get_comments.status_code == 200:
+    print("DEBUG: GET Comments Data:", response_get_comments.json()[:1])
+
+# POST: Create a new post
+new_post = {"userId": 1, "title": "new post", "body": "content"}
+response_post = requests.post(f"{base_url}/posts", json=new_post)
+print("DEBUG: POST Status Code:", response_post.status_code)
+if response_post.status_code == 201:
+    print("DEBUG: POST Data:", response_post.json())
+
+# PUT: Update a post
+updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+、上海 response_put = requests.put(f"{base_url}/posts/1", json=updated_post)
+print("DEBUG: PUT Status Code:", response_put.status_code)
+if response_put.status_code == 200:
+    print("DEBUG: PUT Data:", response_put.json())
+
+# PATCH: Partially update a post
+partial_update = {"title": "partially updated post"}
+response_patch = requests.patch(f"{base_url}/posts/1", json=partial_update)
+print("DEBUG: PATCH Status Code:", response_patch.status_code)
+if response_patch.status_code == 200:
+    print("DEBUG: PATCH Data:", response_patch.json())
+
+# DELETE: Delete a post
+response_delete = requests.delete(f"{base_url}/posts/1")
+print("DEBUG: DELETE Status Code:", response_delete.status_code)
+if response_delete.status_code == 200:
+    print("DEBUG: DELETE Data:", response_delete.json())
+
+# Expected Output (abridged):
+# DEBUG: GET Status Code: 200
+# DEBUG: GET Data: [{'userId': 1, 'id': 1, 'title': 'sunt aut facere...', 'body': '...'}, ...]
+# DEBUG: GET Single Status Code: 200
+# DEBUG: GET Single Data: {'userId': 1, 'id': 1, 'title': 'sunt aut facere...', 'body': '...'}
+# DEBUG: GET Comments Status Code: 200
+# DEBUG: GET Comments Data: [{'postId': 1, 'id': 1, 'name': '...', 'email': '...', 'body': '...'}]
+# DEBUG: POST Status Code: 201
+# DEBUG: POST Data: {'userId': 1, 'title': 'new post', 'body': 'content', 'id': 101}
+# DEBUG: PUT Status Code: 200
+# DEBUG: PUT Data: {'userId': 1, 'id': 1, 'title': 'updated post', 'body': 'new content'}
+# DEBUG: PATCH Status Code: 200
+# DEBUG: PATCH Data: {'userId': 1, 'id': 1, 'title': 'partially updated post', 'body': '...'}
+# DEBUG: DELETE Status Code: 200
+# DEBUG: DELETE Data: {}
 ```
 
 **Note**: API latency (\~100ms) varies based on network conditions and server load. In production, monitor response times and consider timeouts (Chapter 40).
@@ -157,48 +251,47 @@ else:
 1. Install `requests`: `pip install requests`.
 2. Save as `de-onboarding/api_basics.py`.
 3. Configure editor for **4-space indentation** per PEP 8 (VS Code: “Editor: Tab Size” = 4, “Editor: Insert Spaces” = true, “Editor: Detect Indentation” = false).
-4. Run: `python api_basics.py` (replace `url` with `https://jsonplaceholder.typicode.com/posts` for testing).
-5. Verify output shows status and data.
+4. Run: `python api_basics.py`.
+5. Verify output shows status and data for each method.
 6. **Common Errors**:
    - **ModuleNotFoundError**: Install `requests` with `pip install requests`.
-   - **ConnectionError**: Check internet or URL. Print `url`.
+   - **ConnectionError**: Check internet or URL. Print `base_url`.
    - **IndentationError**: Use 4 spaces (not tabs). Run `python -tt api_basics.py`.
 
 **Key Points**:
 
-- `requests.get()`: Sends HTTP GET request, returns response object.
-- `response.json()`: Parses JSON into dictionaries/lists.
+- `requests.get()`, `requests.post()`, `requests.put()`, `requests.patch()`, `requests.delete()`: Perform respective HTTP operations.
 - **Performance**:
-  - **Time Complexity**: O(1) for request (network latency dominates), O(n) for parsing n records.
-  - **Space Complexity**: O(n) for n records in memory.
-- **Implication**: Efficient for fetching transaction data, with latency dependent on network (\~100ms per request).
+  - **Time Complexity**: O(1) for single requests (network latency dominates), O(n) for parsing n records (GET, POST, PUT, PATCH).
+  - **Space Complexity**: O(n) for n records; O(1) for DELETE.
+- **Implication**: Efficient for managing post data, with latency dependent on network (\~100ms per request).
 
 ## 4.3 JSON Processing
 
-JSON responses are parsed into Python dictionaries or lists, suitable for validation and conversion to DataFrames.
+JSON responses are parsed into Python dictionaries or lists, suitable for validation and conversion to DataFrames. This builds on Chapter 2’s JSON parsing, extending it to API responses.
 
 ```python
 import requests  # Import requests
 
 # Fetch and process JSON
-url = "https://mockapi.example.com/transactions"  # Mock API
+url = "https://jsonplaceholder.typicode.com/posts"  # API endpoint
 response = requests.get(url)  # Send GET request
 if response.status_code == 200:  # Check success
-    transactions = response.json()  # Parse JSON
-    print("Response JSON:", transactions)  # Debug: print raw JSON
-    for transaction in transactions:  # Loop through transactions
-        print(f"Processing: {transaction}")  # Debug: print transaction
+    posts = response.json()  # Parse JSON
+    print("DEBUG: Response JSON:", posts[:2])  # Debug: print first two records
+    for post in posts:  # Loop through posts
+        print(f"DEBUG: Processing post: {post}")  # Debug: print post
         # Example: Access fields
-        tid = transaction["transaction_id"]  # Get ID
-        product = transaction["product"]  # Get product
-        print(f"ID: {tid}, Product: {product}")  # Debug: print fields
+        post_id = post["id"]  # Get ID
+        title = post["title"]  # Get title
+        print(f"DEBUG: ID: {post_id}, Title: {title}")  # Debug: print fields
 else:
-    print("Fetch failed:", response.status_code)  # Log failure
+    print("DEBUG: Fetch failed:", response.status_code)  # Log failure
 
-# Expected Output (with mock API):
-# Response JSON: [{'transaction_id': 'T001', 'product': 'Halal Laptop', 'price': 999.99, 'quantity': 2, 'date': '2023-10-01'}, ...]
-# Processing: {'transaction_id': 'T001', 'product': 'Halal Laptop', 'price': 999.99, 'quantity': 2, 'date': '2023-10-01'}
-# ID: T001, Product: Halal Laptop
+# Expected Output:
+# DEBUG: Response JSON: [{'userId': 1, 'id': 1, 'title': 'sunt aut facere...', 'body': '...'}, ...]
+# DEBUG: Processing post: {'userId': 1, 'id': 1, 'title': 'sunt aut facere...', 'body': '...'}
+# DEBUG: ID: 1, Title: sunt aut facere...
 # ...
 ```
 
@@ -206,24 +299,34 @@ else:
 
 1. Save as `de-onboarding/json_processing.py`.
 2. Configure editor for 4-space indentation per PEP 8.
-3. Run: `python json_processing.py` (use a mock API).
-4. Verify output shows transaction details.
+3. Run: `python json_processing.py`.
+4. Verify output shows post details.
 5. **Common Errors**:
-   - **KeyError**: Ensure JSON has expected fields. Print `transaction.keys()`.
+   - **KeyError**: Ensure JSON has expected fields. Print `post.keys()`.
    - **IndentationError**: Use 4 spaces (not tabs). Run `python -tt json_processing.py`.
 
-**Note**: Real-world APIs may return nested JSON or inconsistent fields. Ensure `mock_transactions.json` matches the API’s schema (e.g., same fields as `transactions.csv`). Always print `response.json()` to inspect the structure before processing.
+**Note**: Real-world APIs may return nested JSON or inconsistent fields. Always print `response.json()` to inspect the structure before processing.
 
 **Key Points**:
 
 - JSON parsing: Converts to Python lists/dictionaries.
-- **Time Complexity**: O(n) for iterating n transactions.
-- **Space Complexity**: O(n) for storing n transactions.
-- **Implication**: JSON is ideal for structured transaction data, integrating with Pandas for analysis.
+- **Time Complexity**: O(n) for iterating n posts.
+- **Space Complexity**: O(n) for storing n posts.
+- **Implication**: JSON is ideal for structured post data, integrating with Pandas for analysis.
 
 ## 4.4 Data Validation with `utils.py`
 
-Validate JSON data using `utils.py` (updated from Chapter 3), ensuring Sharia-compliant products and valid fields.
+Validate JSON data using `utils.py` (updated from Chapter 3), ensuring integrity of post fields (`userId`, `id`, `title`, `body`) for GET responses and POST/PUT/PATCH payloads.
+
+**Sample `config.yaml`**:
+
+```yaml
+required_fields: ['userId', 'id', 'title', 'body']
+min_user_id: 1
+min_id: 1
+```
+
+Create `data/config.yaml` with this content to define validation rules for `/posts` data. Save with UTF-8 encoding and verify with `cat data/config.yaml` (Unix/macOS) or `type data\config.yaml` (Windows).
 
 ```python
 # File: de-onboarding/utils.py (updated)
@@ -231,94 +334,67 @@ def clean_string(s):  # Clean string
     """Strip whitespace from string."""
     return s.strip() if isinstance(s, str) else ""
 
-def is_numeric(s, max_decimals=2):  # Check if string is numeric
-    """Check if string is a decimal number with up to max_decimals."""
-    if not isinstance(s, (str, int, float)):
-        return False
-    s = str(s)
-    parts = s.split(".")
-    if len(parts) > 2:
-        return False
-    if len(parts) == 2 and not (parts[0].lstrip("-").isdigit() and parts[1].isdigit()):
-        return False
-    if len(parts) == 1 and not parts[0].lstrip("-").isdigit():
-        return False
-    if len(parts) == 2:
-        return len(parts[1]) <= max_decimals
-    return True
-
-def is_numeric_value(x):  # Check if value is numeric
-    """Check if value is an integer or float."""
-    return isinstance(x, (int, float))
-
-def has_valid_decimals(x, max_decimals):  # Check decimal places
-    """Check if value has valid decimal places."""
-    return is_numeric(str(x), max_decimals)
-
-def apply_valid_decimals(x, max_decimals):  # Apply decimal validation
-    """Apply has_valid_decimals to a value."""
-    return has_valid_decimals(x, max_decimals)
-
 def is_integer(x):  # Check if value is integer
     """Check if value is an integer."""
     return isinstance(x, int) or (isinstance(x, str) and x.lstrip("-").isdigit())
 
-def validate_transaction(transaction, config):  # Validate transaction
-    """Validate transaction based on config rules."""
+def validate_post(post, config):  # Validate post
+    """Validate post based on config rules."""
     required_fields = config["required_fields"]  # Get required fields
-    min_price = config["min_price"]  # Get minimum price
-    max_quantity = config["max_quantity"]  # Get maximum quantity
-    prefix = config["product_prefix"]  # Get product prefix
-    max_decimals = config["max_decimals"]  # Get max decimals
+    min_user_id = config["min_user_id"]  # Get minimum user ID
+    min_id = config["min_id"]  # Get minimum ID
 
-    print(f"Validating transaction: {transaction}")  # Debug
+    print(f"DEBUG: Validating post: {post}")  # Debug
     # Check required fields
     for field in required_fields:
-        if field not in transaction or not transaction[field]:
-            print(f"Invalid: missing {field}: {transaction}")  # Log invalid
+        if field not in post or not post[field]:
+            print(f"DEBUG: Invalid: missing or empty {field}: {post}")  # Log invalid
             return False
 
-    # Validate product
-    product = clean_string(transaction["product"])
-    if not product.startswith(prefix):
-        print(f"Invalid: product lacks '{prefix}' prefix: {transaction}")  # Log invalid
+    # Validate userId
+    user_id = post["userId"]
+    if not is_integer(user_id) or int(user_id) < min_user_id:
+        print(f"DEBUG: Invalid: invalid userId: {post}")  # Log invalid
         return False
 
-    # Validate price
-    price = transaction["price"]
-    if not is_numeric_value(price) or price < min_price or price <= 0:
-        print(f"Invalid: invalid price: {transaction}")  # Log invalid
-        return False
-    if not apply_valid_decimals(price, max_decimals):
-        print(f"Invalid: too many decimals in price: {transaction}")  # Log invalid
+    # Validate id
+    post_id = post["id"]
+    if not is_integer(post_id) or int(post_id) < min_id:
+        print(f"DEBUG: Invalid: invalid id: {post}")  # Log invalid
         return False
 
-    # Validate quantity
-    quantity = transaction["quantity"]
-    if not is_integer(quantity) or int(quantity) > max_quantity:
-        print(f"Invalid: invalid quantity: {transaction}")  # Log invalid
+    # Validate title and body (ensure non-empty after cleaning)
+    title = clean_string(post["title"])
+    body = clean_string(post["body"])
+    if not title or not body:
+        print(f"DEBUG: Invalid: empty title or body: {post}")  # Log invalid
         return False
 
-    # Validate date (basic format check: YYYY-MM-DD)
-    date = clean_string(transaction["date"])
-    if not len(date) == 10 or date.count("-") != 2:
-        print(f"Invalid: invalid date format: {transaction}")  # Log invalid
-        return False
+    return True  # Valid post
 
-    return True  # Valid transaction
+# Example: Valid GET response
+config = {"required_fields": ["userId", "id", "title", "body"], "min_user_id": 1, "min_id": 1}
+valid_post = {"userId": 1, "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"}
+print(validate_post(valid_post, config))  # True
+# Example: Invalid GET response
+invalid_post = {"userId": 0, "id": 2, "title": "", "body": ""}
+print(validate_post(invalid_post, config))  # False
+# Example: Valid POST payload
+post_payload = {"userId": 1, "title": "new post", "body": "content"}
+print(validate_post(post_payload, config))  # True
 ```
 
 **Key Points**:
 
-- Validates transaction fields against `config.yaml` rules.
-- **Validation Complexity**: O(1) per transaction for constant-time checks (e.g., field existence, string prefix), O(n) for n transactions.
-- **Time Complexity**: O(1) per transaction, O(n) for n transactions.
-- **Space Complexity**: O(1) per transaction.
-- **Implication**: Ensures data integrity for Hijra Group’s compliance.
+- Validates post fields against `config.yaml` rules for GET, POST, PUT, and PATCH operations.
+- **Validation Complexity**: O(1) per post for constant-time checks (e.g., field existence, integer validation), O(n) for n posts.
+- **Time Complexity**: O(1) per post, O(n) for n posts.
+- **Space Complexity**: O(1) per post.
+- **Implication**: Ensures data integrity for Hijra Group’s content analytics across API operations.
 
 ## 4.5 Pandas Integration
 
-Convert validated JSON data to a Pandas DataFrame and save to CSV.
+Convert validated JSON data from GET requests to a Pandas DataFrame and save to CSV. This builds on Chapter 3’s Pandas DataFrame operations, converting JSON to structured data. The CSV output maintains column order: `userId`, `id`, `title`, `body`. **Note**: For large datasets, CSV output may require chunked writing (Chapter 40) to manage memory efficiently.
 
 ```python
 import requests  # Import requests
@@ -330,53 +406,54 @@ import yaml  # Import YAML
 with open("data/config.yaml", "r") as file:
     config = yaml.safe_load(file)
 
-# Fetch and validate transactions
-url = "https://mockapi.example.com/transactions"
+# Fetch and validate posts
+url = "https://jsonplaceholder.typicode.com/posts"
 response = requests.get(url)
 if response.status_code == 200:
-    transactions = response.json()
-    valid_transactions = [t for t in transactions if utils.validate_transaction(t, config)]
-    print(f"Valid transactions: {len(valid_transactions)}")  # Debug
+    posts = response.json()
+    valid_posts = [p for p in posts if utils.validate_post(p, config)]
+    print(f"DEBUG: Valid posts: {len(valid_posts)}")  # Debug
 else:
-    valid_transactions = []
-    print("Fetch failed:", response.status_code)
+    valid_posts = []
+    print("DEBUG: Fetch failed:", response.status_code)
 
 # Convert to DataFrame
-df = pd.DataFrame(valid_transactions)
-print("DataFrame:")  # Debug
+df = pd.DataFrame(valid_posts)
+print("DEBUG: DataFrame:")  # Debug
 print(df.head())
 
 # Save to CSV
-csv_path = "data/transactions.csv"
+csv_path = "data/posts.csv"
 df.to_csv(csv_path, index=False)
-print(f"Saved to {csv_path}")
+print(f"DEBUG: Saved to {csv_path}")
 
-# Expected Output (with mock API):
-# Valid transactions: 2
-# DataFrame:
-#   transaction_id       product   price  quantity        date
-# 0         T001  Halal Laptop  999.99         2  2023-10-01
-# 1         T002   Halal Mouse   24.99        10  2023-10-02
-# Saved to data/transactions.csv
+# Expected Output:
+# DEBUG: Valid posts: 100
+# DEBUG: DataFrame:
+#    userId  id                                              title                                               body
+# 0       1   1  sunt aut facere repellat provident occaecati e...  quia et suscipit\nsuscipit recusandae consequun...
+# 1       1   2                                        qui est esse  est rerum tempore vitae\nsequi sint nihil repre...
+# ...
+# DEBUG: Saved to data/posts.csv
 ```
 
 **Follow-Along Instructions**:
 
-1. Ensure `data/config.yaml` exists per Appendix 1.
+1. Ensure `data/config.yaml` exists with the sample content above.
 2. Save as `de-onboarding/pandas_integration.py`.
 3. Configure editor for 4-space indentation per PEP 8.
-4. Run: `python pandas_integration.py` (use mock API).
-5. Verify `data/transactions.csv` matches expected structure.
+4. Run: `python pandas_integration.py`.
+5. Verify `data/posts.csv` matches expected structure with columns `userId`, `id`, `title`, `body`.
 6. **Common Errors**:
    - **FileNotFoundError**: Ensure `config.yaml` exists. Print path with `print("data/config.yaml")`.
-   - **KeyError**: Validate JSON fields. Print `transaction.keys()`.
+   - **KeyError**: Validate JSON fields. Print `post.keys()`.
    - **IndentationError**: Use 4 spaces (not tabs). Run `python -tt pandas_integration.py`.
 
 **Key Points**:
 
 - `pd.DataFrame()`: Converts list of dictionaries to DataFrame.
 - `to_csv()`: Saves DataFrame to CSV.
-- **Time Complexity**: O(n) for n transactions.
+- **Time Complexity**: O(n) for n posts.
 - **Space Complexity**: O(n) for DataFrame (\~24MB for 1M rows).
 - **Implication**: Integrates API data into pipelines for analysis.
 
@@ -384,18 +461,18 @@ print(f"Saved to {csv_path}")
 
 **Model-View-Controller (MVC)** organizes code for scalability:
 
-- **Model**: Data logic (e.g., `utils.validate_transaction`, DataFrame operations).
+- **Model**: Data logic (e.g., `utils.validate_post`, DataFrame operations).
 - **View**: Output (e.g., CSV file, console logs).
-- **Controller**: Workflow (e.g., fetching, validating, saving).
+- **Controller**: Workflow (e.g., fetching, validating, creating, updating, deleting).
 
-For example, in Hijra Group’s pipeline, the Model validates transaction data, the View generates a CSV report for stakeholders, and the Controller orchestrates API fetching and saving.
+For example, in Hijra Group’s pipeline, the Model validates post data, the View generates a CSV report for engagement analysis, and the Controller orchestrates API operations (GET, POST, PUT, PATCH, DELETE).
 
 **MVC Structure Diagram**:
 
 ```mermaid
 flowchart TD
-    A[Controller: fetch_transactions] -->|Load Config| B[Model: read_config]
-    A -->|Fetch Data| C[Model: fetch_data]
+    A[Controller: manage_posts] -->|Load Config| B[Model: read_config]
+    A -->|Fetch/Create/Update/Delete| C[Model: fetch_data]
     A -->|Validate| D[Model: validate_data]
     A -->|Save Output| E[View: save_to_csv]
 ```
@@ -403,76 +480,91 @@ flowchart TD
 **Example Structure**:
 
 ```python
-# Controller: Orchestrates fetching and processing
-def fetch_transactions(url, config_path, csv_path):
+# Controller: Orchestrates post management
+def manage_posts(url, config_path, csv_path):
     config = read_config(config_path)  # Model: Load config
-    transactions = fetch_data(url)  # Model: Fetch data
-    valid_transactions = validate_data(transactions, config)  # Model: Validate
-    save_to_csv(valid_transactions, csv_path)  # View: Save output
+    posts = fetch_data(url)  # Model: Fetch data
+    valid_posts = validate_data(posts, config)  # Model: Validate
+    save_to_csv(valid_posts, csv_path)  # View: Save output
 ```
 
 **Implication**: MVC prepares for OOP (Chapter 5) and web frameworks (Chapters 52–53), ensuring modular pipelines.
 
-## 4.7 Micro-Project: Transaction Data Fetcher
+## 4.7 Micro-Project: Post Data Manager
 
 ### Project Requirements
 
-Build a transaction data fetcher that retrieves data from a mock API or `data/mock_transactions.json`, validates it using `utils.py`, and saves to `data/transactions.csv` for Hijra Group’s analytics. This fetcher supports real-time transaction processing, ensuring compliance with IFSB standards by validating Halal products. The `json.load` function for `mock_transactions.json` builds on Chapter 2’s JSON processing, similar to `yaml.safe_load`.
+Build a post data manager that performs GET, POST, PUT, PATCH, and DELETE operations using `https://jsonplaceholder.typicode.com/posts`, validates data with `utils.py`, and saves fetched posts to `data/posts.csv` for Hijra Group’s content analytics. This manager supports real-time post processing, ensuring data integrity for analyzing user engagement metrics. We assume the API is always available. The CSV output maintains column order: `userId`, `id`, `title`, `body`.
 
-- Fetch data from a mock API (e.g., `https://jsonplaceholder.typicode.com/posts` for testing) or load `data/mock_transactions.json` if API fails.
+- **GET**: Fetch posts (`/posts`) and validate them.
+- **POST**: Create a new post (`/posts`) with a sample payload.
+- **PUT**: Update an existing post (`/posts/1`) with full replacement.
+- **PATCH**: Partially update a post (`/posts/1`) with a new title.
+- **DELETE**: Delete a post (`/posts/1`).
 - Read `data/config.yaml` with PyYAML.
-- Validate transactions for required fields, Halal prefix, numeric price/quantity, and date format.
-- Save valid transactions to `data/transactions.csv`.
+- Validate posts for non-empty `title` and `body`, and positive integer `userId` and `id`.
+- Save valid GET-fetched posts to `data/posts.csv`.
 - Log steps, invalid records, and a validation error summary using print statements.
 - Use **4-space indentation** per PEP 8, preferring spaces over tabs.
 - Test edge cases with mock JSON data simulating errors.
 
-### Sample Input (Mock API Response or `data/mock_transactions.json`)
+### Sample Input (API Response for GET, Mock Payloads for POST/PUT/PATCH)
+
+- **GET /posts**:
 
 ```json
 [
   {
-    "transaction_id": "T001",
-    "product": "Halal Laptop",
-    "price": 999.99,
-    "quantity": 2,
-    "date": "2023-10-01"
+    "userId": 1,
+    "id": 1,
+    "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+    "body": "quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto"
   },
   {
-    "transaction_id": "T002",
-    "product": "Halal Mouse",
-    "price": 24.99,
-    "quantity": 10,
-    "date": "2023-10-02"
+    "userId": 1,
+    "id": 2,
+    "title": "qui est esse",
+    "body": "est rerum tempore vitae\nsequi sint nihil reprehenderit dolor beatae ea dolores neque\nfugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis\nqui aperiam non debitis possimus qui neque nisi nulla"
   },
   {
-    "transaction_id": "T003",
-    "product": "Monitor",
-    "price": 199.99,
-    "quantity": 2,
-    "date": "2023-10-05"
+    "userId": 0,
+    "id": 3,
+    "title": "ea molestias quasi exercitationem repellat qui ipsa sit aut",
+    "body": "et iusto sed quo iure\nvoluptatem occaecati omnis eligendi aut ad\nvoluptatem doloribus vel accusantium quis pariatur\nmolestiae porro eius odio et labore et velit aut"
   },
-  {
-    "transaction_id": "T004",
-    "product": "",
-    "price": 29.99,
-    "quantity": 3,
-    "date": "2023-10-04"
-  }
+  { "userId": 1, "id": 4, "title": "", "body": "" }
 ]
+```
+
+- **POST /posts Payload**:
+
+```json
+{ "userId": 1, "title": "new post", "body": "content" }
+```
+
+- **PUT /posts/1 Payload**:
+
+```json
+{ "userId": 1, "id": 1, "title": "updated post", "body": "new content" }
+```
+
+- **PATCH /posts/1 Payload**:
+
+```json
+{ "title": "partially updated post" }
 ```
 
 ### Data Processing Flow
 
 ```mermaid
 flowchart TD
-    A["API Endpoint or mock_transactions.json"] --> B["Fetch Data<br>requests.get or json.load"]
+    A["API Endpoint"] --> B["Fetch/Create/Update/Delete<br>requests.get/post/put/patch/delete"]
     B --> C["JSON Response"]
     C --> D["Read YAML<br>config.yaml"]
     D --> E["Validate JSON<br>utils.py"]
     E -->|Invalid| F["Log Warning<br>Skip Record"]
-    E -->|Valid| G["Convert to DataFrame<br>Pandas"]
-    G --> H["Save CSV<br>transactions.csv"]
+    E -->|Valid| G["Convert to DataFrame<br>Pandas (for GET)"]
+    G --> H["Save CSV<br>posts.csv"]
     F --> I["End Processing"]
     H --> I
 
@@ -490,40 +582,43 @@ flowchart TD
 ### Acceptance Criteria
 
 - **Go Criteria**:
-  - Fetches data from mock API or `data/mock_transactions.json`.
+  - Performs GET, POST, PUT, PATCH, and DELETE operations on `https://jsonplaceholder.typicode.com/posts`.
   - Loads `config.yaml` correctly.
-  - Validates transactions for required fields, Halal prefix, numeric price/quantity, positive prices, and date format.
-  - Saves valid transactions to `data/transactions.csv`.
-  - Logs steps, invalid records, and a validation error summary.
+  - Validates posts for non-empty `title` and `body`, and positive integer `userId` and `id`.
+  - Saves valid GET-fetched posts to `data/posts.csv` with columns `userId`, `id`, `title`, `body`.
+  - Logs steps, invalid records, and a structured validation error summary.
   - Uses 4-space indentation per PEP 8.
-  - Handles edge cases (e.g., empty response, invalid JSON).
+  - Handles edge cases (e.g., empty response, invalid JSON, invalid payloads).
 - **No-Go Criteria**:
-  - Fails to fetch or save data.
+  - Fails to perform any HTTP method or save data.
   - Incorrect validation or error summary.
-  - Missing CSV output.
+  - Missing CSV output for GET.
   - Uses try/except or type annotations.
   - Inconsistent indentation.
 
 ### Common Pitfalls to Avoid
 
-1. **API Fetch Failure**:
-   - **Problem**: `requests.get` fails due to network issues.
-   - **Solution**: Print `url` and `response.status_code`. Use `data/mock_transactions.json` as fallback.
+1. **API Operation Failure**:
+   - **Problem**: `requests.get/post/put/patch/delete` fails due to network issues.
+   - **Solution**: Print `url` and `response.status_code`. Verify connectivity with `curl https://jsonplaceholder.typicode.com/posts`.
 2. **JSON Parsing Errors**:
-   - **Problem**: Invalid JSON structure.
-   - **Solution**: Print `response.text` to inspect response or `print(open(json_path).read())` for `mock_transactions.json`.
+   - **Problem**: Invalid JSON structure in responses.
+   - **Solution**: Print `response.text` to inspect response.
 3. **Validation Errors**:
    - **Problem**: Missing fields cause `KeyError`.
-   - **Solution**: Print `transaction.keys()` to debug.
+   - **Solution**: Print `post.keys()` to debug.
 4. **Pandas Type Issues**:
-   - **Problem**: Non-numeric fields cause errors.
-   - **Solution**: Validate with `utils.is_numeric_value`. Print `df.dtypes`.
+   - **Problem**: Inconsistent field types cause errors.
+   - **Solution**: Validate fields in `utils.py`. Print `df.dtypes`.
 5. **Rate Limiting**:
-   - **Problem**: API rejects requests if sent too frequently.
-   - **Solution**: Check response headers (e.g., `print(response.headers.get('X-RateLimit-Remaining'))`) for rate limit info and pause if needed.
+   - **Problem**: APIs may reject frequent requests. JSONPlaceholder is unlimited, but check headers (e.g., `print(response.headers.get('X-RateLimit-Remaining'))`) for real-world APIs.
+   - **Solution**: Pause if rate limits are detected in production APIs.
 6. **IndentationError**:
    - **Problem**: Mixed spaces/tabs.
-   - **Solution**: Use 4 spaces per PEP 8. Run `python -tt transaction_fetcher.py`.
+   - **Solution**: Use 4 spaces per PEP 8. Run `python -tt post_manager.py`.
+7. **PermissionError**:
+   - **Problem**: Cannot write to `data/`.
+   - **Solution**: Check permissions with `ls -l data/` (Unix/macOS) or `dir data\` (Windows).
 
 ### How This Differs from Production
 
@@ -538,151 +633,171 @@ In production, this solution would include:
 
 ### Notes
 
-- **File Size**: `mock_transactions.json` with 4 transactions is \~200 bytes, but real-world transaction datasets may be megabytes, requiring chunked processing in Chapter 40.
+- **File Size**: The `/posts` endpoint returns \~100KB for 100 records, stored in memory as a list of dictionaries (O(n) space). Real-world content datasets may be megabytes, requiring chunked processing in Chapter 40.
 
 ### Implementation
 
 ```python
 # File: de-onboarding/utils.py (already provided in Section 4.4)
 
-# File: de-onboarding/transaction_fetcher.py
+# File: de-onboarding/post_manager.py
 import requests  # For API requests
 import pandas as pd  # For DataFrame operations
 import yaml  # For YAML parsing
-import json  # For JSON file loading
 import os  # For file existence check
 
 # Define function to read YAML configuration
 def read_config(config_path):  # Takes config file path
     """Read YAML configuration."""
-    print(f"Opening config: {config_path}")  # Debug
+    print(f"DEBUG: Opening config: {config_path}")  # Debug
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)  # Parse YAML
-    print(f"Loaded config: {config}")  # Debug
+    print(f"DEBUG: Loaded config: {config}")  # Debug
     return config
 
-# Define function to fetch data from API or JSON file
-def fetch_data(url, json_path):  # Takes API URL and JSON path
-    """Fetch JSON data from API or local file."""
-    print(f"Fetching data from: {url}")  # Debug
-    response = requests.get(url)  # Send GET request
-    print(f"Status Code: {response.status_code}")  # Debug
-    if response.status_code == 200:  # Success
-        data = response.json()  # Parse JSON
-        print(f"Fetched {len(data)} records from API")  # Debug
+# Define function to fetch data from API
+def fetch_data(url, method="get", data=None):  # Takes URL, method, and optional data
+    """Perform HTTP request (GET, POST, PUT, PATCH, DELETE)."""
+    print(f"DEBUG: Performing {method.upper()} request to: {url}")  # Debug
+    if method == "get":
+        response = requests.get(url)
+    elif method == "post":
+        response = requests.post(url, json=data)
+    elif method == "put":
+        response = requests.put(url, json=data)
+    elif method == "patch":
+        response = requests.patch(url, json=data)
+    elif method == "delete":
+        response = requests.delete(url)
+    else:
+        print(f"DEBUG: Invalid method: {method}")
+        return None
+    print(f"DEBUG: Status Code: {response.status_code}")  # Debug
+    if response.status_code in (200, 201, 204):
+        data = response.json() if response.content else {}
+        print(f"DEBUG: Response Data: {data}")  # Debug
         return data
-    print(f"Fetch failed: {response.status_code}, loading from {json_path}")  # Log failure
-    if os.path.exists(json_path):  # Check if JSON file exists
-        with open(json_path, "r") as file:
-            data = json.load(file)  # Load JSON
-        print(f"Fetched {len(data)} records from {json_path}")  # Debug
-        return data
-    print(f"No data available from {json_path}")  # Log failure
-    return []
+    print(f"DEBUG: Request failed: {response.status_code}")  # Log failure
+    return None
 
-# Define function to validate and filter transactions
-def validate_data(transactions, config):  # Takes transactions and config
-    """Validate transactions using utils.py and summarize errors."""
-    valid_transactions = []
+# Define function to validate and filter posts
+def validate_data(posts, config):  # Takes posts and config
+    """Validate posts using utils.py and summarize errors."""
+    if not posts:
+        return []
+    valid_posts = []
     invalid_count = 0
     error_summary = {
         "missing_field": 0,
-        "invalid_prefix": 0,
-        "invalid_price": 0,
-        "invalid_quantity": 0,
-        "invalid_date": 0
+        "invalid_user_id": 0,
+        "invalid_id": 0,
+        "empty_title_or_body": 0
     }
-    for transaction in transactions:
+    for post in posts:
         required_fields = config["required_fields"]
-        prefix = config["product_prefix"]
-        min_price = config["min_price"]
-        max_quantity = config["max_quantity"]
-        max_decimals = config["max_decimals"]
+        min_user_id = config["min_user_id"]
+        min_id = config["min_id"]
 
         # Check required fields
         for field in required_fields:
-            if field not in transaction or not transaction[field]:
-                print(f"Invalid: missing {field}: {transaction}")  # Log invalid
+            if field not in post or not post[field]:
+                print(f"DEBUG: Invalid: missing or empty {field}: {post}")  # Log invalid
                 error_summary["missing_field"] += 1
                 invalid_count += 1
                 continue
 
-        # Validate product
-        product = utils.clean_string(transaction["product"])
-        if not product.startswith(prefix):
-            print(f"Invalid: product lacks '{prefix}' prefix: {transaction}")  # Log invalid
-            error_summary["invalid_prefix"] += 1
+        # Validate userId
+        user_id = post["userId"]
+        if not utils.is_integer(user_id) or int(user_id) < min_user_id:
+            print(f"DEBUG: Invalid: invalid userId: {post}")  # Log invalid
+            error_summary["invalid_user_id"] += 1
             invalid_count += 1
             continue
 
-        # Validate price
-        price = transaction["price"]
-        if not utils.is_numeric_value(price) or price < min_price or price <= 0:
-            print(f"Invalid: invalid price: {transaction}")  # Log invalid
-            error_summary["invalid_price"] += 1
-            invalid_count += 1
-            continue
-        if not utils.apply_valid_decimals(price, max_decimals):
-            print(f"Invalid: too many decimals in price: {transaction}")  # Log invalid
-            error_summary["invalid_price"] += 1
+        # Validate id
+        post_id = post["id"]
+        if not utils.is_integer(post_id) or int(post_id) < min_id:
+            print(f"DEBUG: Invalid: invalid id: {post}")  # Log invalid
+            error_summary["invalid_id"] += 1
             invalid_count += 1
             continue
 
-        # Validate quantity
-        quantity = transaction["quantity"]
-        if not utils.is_integer(quantity) or int(quantity) > max_quantity:
-            print(f"Invalid: invalid quantity: {transaction}")  # Log invalid
-            error_summary["invalid_quantity"] += 1
+        # Validate title and body
+        title = utils.clean_string(post["title"])
+        body = utils.clean_string(post["body"])
+        if not title or not body:
+            print(f"DEBUG: Invalid: empty title or body: {post}")  # Log invalid
+            error_summary["empty_title_or_body"] += 1
             invalid_count += 1
             continue
 
-        # Validate date
-        date = utils.clean_string(transaction["date"])
-        if not len(date) == 10 or date.count("-") != 2:
-            print(f"Invalid: invalid date format: {transaction}")  # Log invalid
-            error_summary["invalid_date"] += 1
-            invalid_count += 1
-            continue
+        valid_posts.append(post)
 
-        valid_transactions.append(transaction)
-
-    print(f"Valid transactions: {len(valid_transactions)}")  # Debug
-    print(f"Invalid transactions: {invalid_count}")  # Debug
-    print("Validation Errors:", error_summary)  # Debug: print error summary
-    return valid_transactions
+    print(f"DEBUG: Valid posts: {len(valid_posts)}")  # Debug
+    print(f"DEBUG: Invalid posts: {invalid_count}")  # Debug
+    print("DEBUG: Validation Errors:")
+    for error_type, count in error_summary.items():
+        print(f"  {error_type}: {count}")
+    return valid_posts
 
 # Define function to save to CSV
-def save_to_csv(transactions, csv_path):  # Takes transactions and CSV path
-    """Save valid transactions to CSV."""
-    if not transactions:  # Check for empty data
-        print("No valid transactions to save")  # Log empty
+def save_to_csv(posts, csv_path):  # Takes posts and CSV path
+    """Save valid posts to CSV."""
+    if not posts:  # Check for empty data
+        print("DEBUG: No valid posts to save")  # Log empty
         return
-    df = pd.DataFrame(transactions)  # Convert to DataFrame
-    print("DataFrame:")  # Debug
+    df = pd.DataFrame(posts)  # Convert to DataFrame
+    print("DEBUG: DataFrame:")  # Debug
     print(df.head())  # Show first rows
     df.to_csv(csv_path, index=False)  # Save to CSV
-    print(f"Saved to {csv_path}")  # Confirm save
-    print(f"File exists: {os.path.exists(csv_path)}")  # Confirm file creation
+    print(f"DEBUG: Saved to {csv_path}")  # Confirm save
+    print(f"DEBUG: File exists: {os.path.exists(csv_path)}")  # Confirm file creation
 
 # Define main function
 def main():  # No parameters
-    """Main function to fetch and process transactions."""
-    url = "https://mockapi.example.com/transactions"  # Mock API (replace with jsonplaceholder for testing)
+    """Main function to manage posts."""
+    base_url = "https://jsonplaceholder.typicode.com"
     config_path = "data/config.yaml"  # YAML path
-    json_path = "data/mock_transactions.json"  # JSON fallback path
-    csv_path = "data/transactions.csv"  # CSV output path
+    csv_path = "data/posts.csv"  # CSV output path
 
     config = read_config(config_path)  # Read config
-    transactions = fetch_data(url, json_path)  # Fetch data
-    valid_transactions = validate_data(transactions, config)  # Validate
-    save_to_csv(valid_transactions, csv_path)  # Save to CSV
 
-    # Output report
-    print("\nTransaction Report:")  # Print header
-    print(f"Total Records Fetched: {len(transactions)}")  # Total records
-    print(f"Valid Transactions: {len(valid_transactions)}")  # Valid count
-    print(f"Invalid Transactions: {len(transactions) - len(valid_transactions)}")  # Invalid count
-    print("Processing completed")  # Confirm completion
+    # GET: Fetch posts
+    posts = fetch_data(f"{base_url}/posts", method="get")
+    if posts:
+        valid_posts = validate_data(posts, config)
+        save_to_csv(valid_posts, csv_path)
+
+    # POST: Create a new post
+    new_post = {"userId": 1, "title": "new post", "body": "content"}
+    created_post = fetch_data(f"{base_url}/posts", method="post", data=new_post)
+    if created_post:
+        print("DEBUG: Created post validated:", utils.validate_post(created_post, config))
+
+    # PUT: Update a post
+    updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+    updated_result = fetch_data(f"{base_url}/posts/1", method="put", data=updated_post)
+    if updated_result:
+        print("DEBUG: Updated post validated:", utils.validate_post(updated_result, config))
+
+    # PATCH: Partially update a post
+    partial_update = {"title": "partially updated post"}
+    patched_result = fetch_data(f"{base_url}/posts/1", method="patch", data=partial_update)
+    if patched_result:
+        print("DEBUG: Patched post validated:", utils.validate_post(patched_result, config))
+
+    # DELETE: Delete a post
+    delete_result = fetch_data(f"{base_url}/posts/1", method="delete")
+    if delete_result is not None:
+        print("DEBUG: Delete operation successful")
+
+    # Output report for GET operation
+    if posts:
+        print("\nPost Report:")
+        print(f"DEBUG: Total Records Fetched: {len(posts)}")
+        print(f"DEBUG: Valid Posts: {len(valid_posts)}")
+        print(f"DEBUG: Invalid Posts: {len(posts) - len(valid_posts)}")
+        print("DEBUG: Processing completed")
 
 if __name__ == "__main__":
     main()  # Run main function
@@ -690,44 +805,63 @@ if __name__ == "__main__":
 
 ### Expected Output
 
-`data/transactions.csv`:
+`data/posts.csv`:
 
 ```csv
-transaction_id,product,price,quantity,date
-T001,Halal Laptop,999.99,2,2023-10-01
-T002,Halal Mouse,24.99,10,2023-10-02
+userId,id,title,body
+1,1,sunt aut facere repellat provident occaecati excepturi optio reprehenderit,quia et suscipit\nsuscipit recusandae consequuntur expedita et cum\nreprehenderit molestiae ut ut quas totam\nnostrum rerum est autem sunt rem eveniet architecto
+1,2,qui est esse,est rerum tempore vitae\nsequi sint nihil reprehenderit dolor beatae ea dolores neque\nfugiat blanditiis voluptate porro vel nihil molestiae ut reiciendis\nqui aperiam non debitis possimus qui neque nisi nulla
 ```
 
-**Console Output** (abridged, assuming API fails and JSON file is used):
+**Console Output** (abridged):
 
 ```
-Opening config: data/config.yaml
-Loaded config: {'min_price': 10.0, 'max_quantity': 100, 'required_fields': ['product', 'price', 'quantity'], 'product_prefix': 'Halal', 'max_decimals': 2}
-Fetching data from: https://mockapi.example.com/transactions
-Status Code: 404
-Fetch failed: 404, loading from data/mock_transactions.json
-Fetched 4 records from data/mock_transactions.json
-Validating transaction: {'transaction_id': 'T001', 'product': 'Halal Laptop', 'price': 999.99, 'quantity': 2, 'date': '2023-10-01'}
-Validating transaction: {'transaction_id': 'T002', 'product': 'Halal Mouse', 'price': 24.99, 'quantity': 10, 'date': '2023-10-02'}
-Validating transaction: {'transaction_id': 'T003', 'product': 'Monitor', 'price': 199.99, 'quantity': 2, 'date': '2023-10-05'}
-Invalid: product lacks 'Halal' prefix: {'transaction_id': 'T003', 'product': 'Monitor', 'price': 199.99, 'quantity': 2, 'date': '2023-10-05'}
-Validating transaction: {'transaction_id': 'T004', 'product': '', 'price': 29.99, 'quantity': 3, 'date': '2023-10-04'}
-Invalid: missing product: {'transaction_id': 'T004', 'product': '', 'price': 29.99, 'quantity': 3, 'date': '2023-10-04'}
-Valid transactions: 2
-Invalid transactions: 2
-Validation Errors: {'missing_field': 1, 'invalid_prefix': 1, 'invalid_price': 0, 'invalid_quantity': 0, 'invalid_date': 0}
-DataFrame:
-  transaction_id       product   price  quantity        date
-0         T001  Halal Laptop  999.99         2  2023-10-01
-1         T002   Halal Mouse   24.99        10  2023-10-02
-Saved to data/transactions.csv
-File exists: True
+DEBUG: Opening config: data/config.yaml
+DEBUG: Loaded config: {'required_fields': ['userId', 'id', 'title', 'body'], 'min_user_id': 1, 'min_id': 1}
+DEBUG: Performing GET request to: https://jsonplaceholder.typicode.com/posts
+DEBUG: Status Code: 200
+DEBUG: Fetched 100 records from API
+DEBUG: Validating post: {'userId': 1, 'id': 1, 'title': 'sunt aut facere...', 'body': '...'}
+DEBUG: Validating post: {'userId': 0, 'id': 3, 'title': 'ea molestias...', 'body': '...'}
+DEBUG: Invalid: invalid userId: {'userId': 0, 'id': 3, ...}
+DEBUG: Validating post: {'userId': 1, 'id': 4, 'title': '', 'body': ''}
+DEBUG: Invalid: empty title or body: {'userId': 1, 'id': 4, ...}
+DEBUG: Valid posts: 98
+DEBUG: Invalid posts: 2
+DEBUG: Validation Errors:
+  missing_field: 0
+  invalid_user_id: 1
+  invalid_id: 0
+  empty_title_or_body: 1
+DEBUG: DataFrame:
+   userId  id                                              title                                               body
+0       1   1  sunt aut facere repellat provident occaecati e...  quia et suscipit\nsuscipit recusandae consequun...
+1       1   2                                        qui est esse  est rerum tempore vitae\nsequi sint nihil repre...
+...
+DEBUG: Saved to data/posts.csv
+DEBUG: File exists: True
+DEBUG: Performing POST request to: https://jsonplaceholder.typicode.com/posts
+DEBUG: Status Code: 201
+DEBUG: Response Data: {'userId': 1, 'title': 'new post', 'body': 'content', 'id': 101}
+DEBUG: Created post validated: True
+DEBUG: Performing PUT request to: https://jsonplaceholder.typicode.com/posts/1
+DEBUG: Status Code: 200
+DEBUG: Response Data: {'userId': 1, 'id': 1, 'title': 'updated post', 'body': 'new content'}
+DEBUG: Updated post validated: True
+DEBUG: Performing PATCH request to: https://jsonplaceholder.typicode.com/posts/1
+DEBUG: Status Code: 200
+DEBUG: Response Data: {'userId': 1, 'id': 1, 'title': 'partially updated post', 'body': '...'}
+DEBUG: Patched post validated: True
+DEBUG: Performing DELETE request to: https://jsonplaceholder.typicode.com/posts/1
+DEBUG: Status Code: 200
+DEBUG: Response Data: {}
+DEBUG: Delete operation successful
 
-Transaction Report:
-Total Records Fetched: 4
-Valid Transactions: 2
-Invalid Transactions: 2
-Processing completed
+Post Report:
+DEBUG: Total Records Fetched: 100
+DEBUG: Valid Posts: 98
+DEBUG: Invalid Posts: 2
+DEBUG: Processing completed
 ```
 
 ### How to Run and Test
@@ -736,89 +870,104 @@ Processing completed
 
    - **Setup Checklist**:
      - \[ \] Create `de-onboarding/data/` directory.
-     - \[ \] Save `config.yaml`, `transactions.csv`, `mock_transactions.json` per Appendix 1.
+     - \[ \] Save `config.yaml`, `posts.csv` per Appendix 1, and add the sample `config.yaml` from Section 4.4 to `data/config.yaml`.
      - \[ \] Install libraries: `pip install requests pandas pyyaml`.
      - \[ \] Create virtual environment: `python -m venv venv`, activate (Windows: `venv\Scripts\activate`, Unix: `source venv/bin/activate`).
      - \[ \] Verify Python 3.10+: `python --version`.
      - \[ \] Configure editor for 4-space indentation per PEP 8 (VS Code: “Editor: Tab Size” = 4, “Editor: Insert Spaces” = true, “Editor: Detect Indentation” = false).
-     - \[ \] Save `utils.py` and `transaction_fetcher.py` in `de-onboarding/`.
+     - \[ \] Save `utils.py` and `post_manager.py` in `de-onboarding/`.
    - **Troubleshooting**:
-     - If `FileNotFoundError`, check `config.yaml` or `mock_transactions.json` path. Print `print(config_path)` or `print(json_path)`.
+     - If `FileNotFoundError`, check `config.yaml` path. Print `print(config_path)`.
      - If `ModuleNotFoundError`, install libraries or check `utils.py`.
-     - If `IndentationError`, use 4 spaces. Run `python -tt transaction_fetcher.py`.
+     - If `IndentationError`, use 4 spaces. Run `python -tt post_manager.py`.
      - If `yaml.YAMLError`, print `print(open(config_path).read())` to inspect YAML.
-     - If `json.JSONDecodeError`, print `print(open(json_path).read())` to inspect `mock_transactions.json` for syntax errors like missing commas.
      - If `PermissionError`, check write permissions for `data/` with `ls -l data/` (Unix/macOS) or `dir data\` (Windows).
 
 2. **Run**:
 
    - Open terminal in `de-onboarding/`.
-   - Run: `python transaction_fetcher.py` (replace `url` with `https://jsonplaceholder.typicode.com/posts` or use `mock_transactions.json`).
-   - Outputs: `data/transactions.csv`, console logs with validation error summary.
+   - Run: `python post_manager.py`.
+   - Outputs: `data/posts.csv` with columns `userId`, `id`, `title`, `body`, console logs with structured validation error summary and results for all HTTP methods.
 
 3. **Test Scenarios**:
 
-   - **Valid Data**: Use `data/mock_transactions.json`. Verify `transactions.csv` contains only Halal products and error summary is correct.
+   - **Valid Data**: Use `https://jsonplaceholder.typicode.com/posts`. Verify `posts.csv` contains valid posts, and console shows successful POST, PUT, PATCH, and DELETE operations.
 
-   - **Empty Response**: Simulate empty response:
+   - **Empty Response**: Simulate empty GET response:
 
      ```python
-     def fetch_data(url, json_path): return []  # Mock empty response
+     def fetch_data(url, method="get", data=None): return [] if method == "get" else None  # Mock empty response
      config = read_config("data/config.yaml")
-     transactions = fetch_data("mock_url", "data/mock_transactions.json")
-     valid_transactions = validate_data(transactions, config)
-     print(valid_transactions)  # Expected: []
+     posts = fetch_data("https://jsonplaceholder.typicode.com/posts")
+     valid_posts = validate_data(posts, config)
+     print(valid_posts)  # Expected: []
      ```
 
-   - **Invalid JSON**: Simulate malformed JSON:
+   - **Invalid JSON**: Simulate malformed JSON for GET:
 
      ```python
      mock_data = [
-         {"transaction_id": "T001", "product": "Halal Laptop", "price": "invalid", "quantity": 2, "date": "2023-10-01"}
+         {"userId": "invalid", "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"}
      ]
      config = read_config("data/config.yaml")
-     valid_transactions = validate_data(mock_data, config)
-     print(valid_transactions)  # Expected: []
+     valid_posts = validate_data(mock_data, config)
+     print(valid_posts)  # Expected: []
+     ```
+
+   - **Invalid POST Payload**: Simulate invalid POST:
+
+     ```python
+     invalid_post = {"userId": 0, "title": "", "body": ""}
+     config = read_config("data/config.yaml")
+     result = fetch_data("https://jsonplaceholder.typicode.com/posts", method="post", data=invalid_post)
+     print(utils.validate_post(result, config) if result else "Failed")  # Expected: False
      ```
 
 ## 4.8 Practice Exercises
 
-### Exercise 1: API Data Fetcher
+### Exercise 1: API Data Manager
 
-Write a function to fetch JSON data from an API, with 4-space indentation per PEP 8.
+Write a function to perform GET, POST, PUT, PATCH, and DELETE requests on `https://jsonplaceholder.typicode.com/posts`, with 4-space indentation per PEP 8.
 
 **Sample Input**:
 
 ```python
 url = "https://jsonplaceholder.typicode.com/posts"
+new_post = {"userId": 1, "title": "new post", "body": "content"}
+updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+partial_update = {"title": "partially updated post"}
 ```
 
 **Expected Output**:
 
 ```
-Fetched 100 records
+DEBUG: GET Fetched 100 records
+DEBUG: POST Created post
+DEBUG: PUT Updated post
+DEBUG: PATCH Partially updated post
+DEBUG: DELETE Successful
 ```
 
 **Follow-Along Instructions**:
 
-1. Save as `de-onboarding/ex1_fetcher.py`.
+1. Save as `de-onboarding/ex1_manager.py`.
 2. Configure editor for 4-space indentation per PEP 8.
-3. Run: `python ex1_fetcher.py`.
+3. Run: `python ex1_manager.py`.
 4. **How to Test**:
-   - Add: `print(fetch_api_data(url))`.
-   - Verify output shows record count.
-   - Test with invalid URL: Should return `[]`.
+   - Add: `manage_api_data(url, new_post, updated_post, partial_update)`.
+   - Verify output shows results for all methods.
+   - Test with invalid URL: Should return `None` for each operation.
 
 ### Exercise 2: JSON Validator
 
-Write a function to validate JSON transactions using `utils.py`, with 4-space indentation per PEP 8.
+Write a function to validate JSON posts for GET, POST, PUT, or PATCH using `utils.py`, with 4-space indentation per PEP 8.
 
 **Sample Input**:
 
 ```python
-transactions = [
-    {"transaction_id": "T001", "product": "Halal Laptop", "price": 999.99, "quantity": 2, "date": "2023-10-01"},
-    {"transaction_id": "T002", "product": "Monitor", "price": 199.99, "quantity": 2, "date": "2023-10-05"}
+posts = [
+    {"userId": 1, "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"},
+    {"userId": 0, "id": 2, "title": "qui est esse", "body": "est rerum tempore"}
 ]
 config = read_config("data/config.yaml")
 ```
@@ -826,7 +975,7 @@ config = read_config("data/config.yaml")
 **Expected Output**:
 
 ```
-[{'transaction_id': 'T001', 'product': 'Halal Laptop', 'price': 999.99, 'quantity': 2, 'date': '2023-10-01'}]
+[{'userId': 1, 'id': 1, 'title': 'sunt aut facere', 'body': 'quia et suscipit'}]
 ```
 
 **Follow-Along Instructions**:
@@ -836,19 +985,19 @@ config = read_config("data/config.yaml")
 3. Configure editor for 4-space indentation per PEP 8.
 4. Run: `python ex2_validator.py`.
 5. **How to Test**:
-   - Add: `print(validate_transactions(transactions, config))`.
-   - Verify output shows valid transactions.
+   - Add: `print(validate_posts(posts, config))`.
+   - Verify output shows valid posts.
    - Test with empty list: Should return `[]`.
 
 ### Exercise 3: CSV Exporter
 
-Write a function to convert JSON transactions to a CSV, with 4-space indentation per PEP 8.
+Write a function to convert JSON posts from GET to a CSV, with 4-space indentation per PEP 8.
 
 **Sample Input**:
 
 ```python
-transactions = [
-    {"transaction_id": "T001", "product": "Halal Laptop", "price": 999.99, "quantity": 2, "date": "2023-10-01"}
+posts = [
+    {"userId": 1, "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"}
 ]
 csv_path = "data/test.csv"
 ```
@@ -856,7 +1005,7 @@ csv_path = "data/test.csv"
 **Expected Output**:
 
 ```
-Saved to data/test.csv
+DEBUG: Saved to data/test.csv
 ```
 
 **Follow-Along Instructions**:
@@ -865,12 +1014,12 @@ Saved to data/test.csv
 2. Configure editor for 4-space indentation per PEP 8.
 3. Run: `python ex3_exporter.py`.
 4. **How to Test**:
-   - Verify `data/test.csv` exists with correct data.
-   - Test with empty transactions: Should not create CSV.
+   - Verify `data/test.csv` exists with correct data and columns `userId`, `id`, `title`, `body`.
+   - Test with empty posts: Should not create CSV.
 
 ### Exercise 4: MVC Organizer
 
-Refactor a fetcher to use MVC structure, with 4-space indentation per PEP 8.
+Refactor a post manager to use MVC structure for `https://jsonplaceholder.typicode.com/posts`, with 4-space indentation per PEP 8, performing GET, POST, PUT, PATCH, and DELETE.
 
 **Sample Input**:
 
@@ -878,12 +1027,15 @@ Refactor a fetcher to use MVC structure, with 4-space indentation per PEP 8.
 url = "https://jsonplaceholder.typicode.com/posts"
 config_path = "data/config.yaml"
 csv_path = "data/test.csv"
+new_post = {"userId": 1, "title": "new post", "body": "content"}
+updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+partial_update = {"title": "partially updated post"}
 ```
 
 **Expected Output**:
 
 ```
-Saved to data/test.csv
+DEBUG: Saved to data/test.csv
 ```
 
 **Follow-Along Instructions**:
@@ -893,7 +1045,8 @@ Saved to data/test.csv
 3. Configure editor for 4-space indentation per PEP 8.
 4. Run: `python ex4_mvc.py`.
 5. **How to Test**:
-   - Verify `data/test.csv` exists.
+   - Verify `data/test.csv` exists with columns `userId`, `id`, `title`, `body`.
+   - Verify console logs for POST, PUT, PATCH, DELETE operations.
    - Test with invalid URL: Should handle gracefully.
 
 ### Exercise 5: Debug an API Fetch Bug
@@ -909,30 +1062,29 @@ def fetch_data(url):
     data = response.json()  # Bug: No status check
     return data
 
-print(fetch_data("https://invalid-url"))
+print(fetch_data("https://jsonplaceholder.typicode.com/posts"))
 ```
 
 **Expected Output**:
 
 ```
-Fetch failed: 404
-[]
+DEBUG: Fetched 100 records
 ```
 
 **Follow-Along Instructions**:
 
 1. Save as `de-onboarding/ex5_debug.py`.
 2. Configure editor for 4-space indentation per PEP 8.
-3. Run: `python ex5_debug.py` to see incorrect output.
-4. Fix and re-run.
+3. Run: `python ex5_debug.py` to see incorrect output with invalid URL.
+4. Fix and re-run with correct URL.
 5. **How to Test**:
    - Verify output handles invalid URL.
-   - Test with valid URL to ensure data is fetched.
+   - Test with `https://jsonplaceholder.typicode.com/posts` to ensure data is fetched.
    - **Debugging Tips**: Print `response.text` to inspect raw response and `response.headers` to check content type.
 
 ### Exercise 6: REST Principles Explanation, Endpoint Builder, and HTTP Method Analysis
 
-Explain why REST APIs are stateless and how this benefits Hijra Group’s transaction fetching. Write a function to construct a REST endpoint from a date string. Answer why the micro-project uses GET instead of POST, with 4-space indentation per PEP 8. The endpoint builder uses f-strings from Chapter 1’s string formatting. Review string operations if needed.
+Explain why REST APIs are stateless and how this benefits Hijra Group’s content management. Write a function to construct a REST endpoint from a date string. Answer why the micro-project uses GET, POST, PUT, PATCH, and DELETE appropriately, with 4-space indentation per PEP 8. The endpoint builder uses f-strings from Chapter 1’s string formatting. Review string operations if needed.
 
 **Sample Input**:
 
@@ -944,7 +1096,7 @@ explanation, endpoint, http_answer = explain_rest_statelessness(date)
 **Expected Output**:
 
 ```
-Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt
+DEBUG: Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt
 ```
 
 **Expected Files**:
@@ -952,19 +1104,19 @@ Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, 
 - `ex6_rest.txt`:
 
   ```
-  REST APIs are stateless, meaning each request contains all necessary information, and the server does not store client state between requests. This benefits Hijra Group by simplifying transaction fetching, as each API call (e.g., GET /api/transactions/2023-10-01) is independent, reducing server complexity and enabling scalable, reliable data retrieval for real-time analytics.
+  REST APIs are stateless, meaning each request contains all necessary information, and the server does not store client state between requests. This benefits Hijra Group by simplifying content management, as each API call (e.g., GET /posts/2023-10-01) is independent, reducing server complexity and enabling scalable, reliable data retrieval and updates for real-time analytics.
   ```
 
 - `ex6_endpoint.txt`:
 
   ```
-  /api/transactions/2023-10-01
+  /posts/2023-10-01
   ```
 
 - `ex6_http.txt`:
 
   ```
-  GET retrieves data without modifying the server, suitable for fetching transactions, while POST sends data to create or update resources.
+  GET retrieves posts without modifying the server, POST creates new posts, PUT fully updates posts, PATCH partially updates posts, and DELETE removes posts, each suited to specific content management tasks.
   ```
 
 **Follow-Along Instructions**:
@@ -980,29 +1132,61 @@ Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, 
 
 ## 4.9 Exercise Solutions
 
-### Solution to Exercise 1: API Data Fetcher
+### Solution to Exercise 1: API Data Manager
 
 ```python
 import requests  # Import requests
 
-def fetch_api_data(url):  # Takes URL
-    """Fetch JSON data from API."""
-    print(f"Fetching from: {url}")  # Debug
-    response = requests.get(url)  # Send GET request
-    if response.status_code == 200:  # Success
-        data = response.json()  # Parse JSON
-        print(f"Fetched {len(data)} records")  # Debug
-        return data
-    print(f"Fetch failed: {response.status_code}")  # Log failure
-    return []  # Return empty list
+def manage_api_data(url, new_post, updated_post, partial_update):  # Takes URL and payloads
+    """Perform GET, POST, PUT, PATCH, DELETE requests."""
+    # GET
+    response_get = requests.get(url)
+    if response_get.status_code == 200:
+        print(f"DEBUG: GET Fetched {len(response_get.json())} records")
+    else:
+        print(f"DEBUG: GET Failed: {response_get.status_code}")
+
+    # POST
+    response_post = requests.post(url, json=new_post)
+    if response_post.status_code == 201:
+        print("DEBUG: POST Created post")
+    else:
+        print(f"DEBUG: POST Failed: {response_post.status_code}")
+
+    # PUT
+    response_put = requests.put(f"{url}/1", json=updated_post)
+    if response_put.status_code == 200:
+        print("DEBUG: PUT Updated post")
+    else:
+        print(f"DEBUG: PUT Failed: {response_put.status_code}")
+
+    # PATCH
+    response_patch = requests.patch(f"{url}/1", json=partial_update)
+    if response_patch.status_code == 200:
+        print("DEBUG: PATCH Partially updated post")
+    else:
+        print(f"DEBUG: PATCH Failed: {response_patch.status_code}")
+
+    # DELETE
+    response_delete = requests.delete(f"{url}/1")
+    if response_delete.status_code == 200:
+        print("DEBUG: DELETE Successful")
+    else:
+        print(f"DEBUG: DELETE Failed: {response_delete.status_code}")
 
 # Test
-print(fetch_api_data("https://jsonplaceholder.typicode.com/posts"))
+url = "https://jsonplaceholder.typicode.com/posts"
+new_post = {"userId": 1, "title": "new post", "body": "content"}
+updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+partial_update = {"title": "partially updated post"}
+manage_api_data(url, new_post, updated_post, partial_update)
 
 # Output:
-# Fetching from: https://jsonplaceholder.typicode.com/posts
-# Fetched 100 records
-# [{'userId': 1, 'id': 1, 'title': '...', 'body': '...'}, ...]
+# DEBUG: GET Fetched 100 records
+# DEBUG: POST Created post
+# DEBUG: PUT Updated post
+# DEBUG: PATCH Partially updated post
+# DEBUG: DELETE Successful
 ```
 
 ### Solution to Exercise 2: JSON Validator
@@ -1015,26 +1199,31 @@ def read_config(config_path):  # Read config
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
-def validate_transactions(transactions, config):  # Takes transactions and config
-    """Validate transactions using utils.py."""
-    valid_transactions = [t for t in transactions if utils.validate_transaction(t, config)]
-    print(f"Valid transactions: {len(valid_transactions)}")  # Debug
-    return valid_transactions
+def validate_posts(posts, config):  # Takes posts and config
+    """Validate posts using utils.py."""
+    valid_posts = []
+    for post in posts:
+        if utils.validate_post(post, config):
+            valid_posts.append(post)
+        else:
+            print(f"DEBUG: Invalid post: {post}")  # Debug
+    print(f"DEBUG: Valid posts: {len(valid_posts)}")  # Debug
+    return valid_posts
 
 # Test
 config = read_config("data/config.yaml")
-transactions = [
-    {"transaction_id": "T001", "product": "Halal Laptop", "price": 999.99, "quantity": 2, "date": "2023-10-01"},
-    {"transaction_id": "T002", "product": "Monitor", "price": 199.99, "quantity": 2, "date": "2023-10-05"}
+posts = [
+    {"userId": 1, "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"},
+    {"userId": 0, "id": 2, "title": "qui est esse", "body": "est rerum tempore"}
 ]
-print(validate_transactions(transactions, config))
+print(validate_posts(posts, config))
 
-#两个输出示例：
-# Validating transaction: {'transaction_id': 'T001', ...}
-# Validating transaction: {'transaction_id': 'T002', ...}
-# Invalid: product lacks 'Halal' prefix: {'transaction_id': 'T002', ...}
-# Valid transactions: 1
-# [{'transaction_id': 'T001', ...}]
+# Output:
+# DEBUG: Validating post: {'userId': 1, ...}
+# DEBUG: Validating post: {'userId': 0, ...}
+# DEBUG: Invalid: invalid userId: {'userId': 0, ...}
+# DEBUG: Valid posts: 1
+# [{'userId': 1, ...}]
 ```
 
 ### Solution to Exercise 3: CSV Exporter
@@ -1042,23 +1231,23 @@ print(validate_transactions(transactions, config))
 ```python
 import pandas as pd  # Import Pandas
 
-def export_to_csv(transactions, csv_path):  # Takes transactions and CSV path
-    """Export transactions to CSV."""
-    if not transactions:  # Check empty
-        print("No transactions to export")  # Log empty
+def export_to_csv(posts, csv_path):  # Takes posts and CSV path
+    """Export posts to CSV."""
+    if not posts:  # Check empty
+        print("DEBUG: No posts to export")  # Log empty
         return
-    df = pd.DataFrame(transactions)  # Convert to DataFrame
+    df = pd.DataFrame(posts)  # Convert to DataFrame
     df.to_csv(csv_path, index=False)  # Save to CSV
-    print(f"Saved to {csv_path}")  # Confirm save
+    print(f"DEBUG: Saved to {csv_path}")  # Confirm save
 
 # Test
-transactions = [
-    {"transaction_id": "T001", "product": "Halal Laptop", "price": 999.99, "quantity": 2, "date": "2023-10-01"}
+posts = [
+    {"userId": 1, "id": 1, "title": "sunt aut facere", "body": "quia et suscipit"}
 ]
-export_to_csv(transactions, "data/test.csv")
+export_to_csv(posts, "data/test.csv")
 
 # Output:
-# Saved to data/test.csv
+# DEBUG: Saved to data/test.csv
 ```
 
 ### Solution to Exercise 4: MVC Organizer
@@ -1073,33 +1262,60 @@ def read_config(config_path):  # Model
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
-def fetch_data(url):  # Model
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    return []
+def fetch_data(url, method="get", data=None):  # Model
+    if method == "get":
+        response = requests.get(url)
+    elif method == "post":
+        response = requests.post(url, json=data)
+    elif method == "put":
+        response = requests.put(url, json=data)
+    elif method == "patch":
+        response = requests.patch(url, json=data)
+    elif method == "delete":
+        response = requests.delete(url)
+    else:
+        return None
+    if response.status_code in (200, 201, 204):
+        return response.json() if response.content else {}
+    return None
 
-def validate_data(transactions, config):  # Model
-    return [t for t in transactions if utils.validate_transaction(t, config)]
+def validate_data(posts, config):  # Model
+    return [p for p in posts if utils.validate_post(p, config)]
 
-def save_to_csv(transactions, csv_path):  # View
-    if transactions:
-        pd.DataFrame(transactions).to_csv(csv_path, index=False)
-        print(f"Saved to {csv_path}")
+def save_to_csv(posts, csv_path):  # View
+    if posts:
+        pd.DataFrame(posts).to_csv(csv_path, index=False)
+        print(f"DEBUG: Saved to {csv_path}")
 
-def fetch_transactions(url, config_path, csv_path):  # Controller
+def manage_posts(url, config_path, csv_path, new_post, updated_post, partial_update):  # Controller
     config = read_config(config_path)  # Model
-    transactions = fetch_data(url)  # Model
-    valid_transactions = validate_data(transactions, config)  # Model
-    save_to_csv(valid_transactions, csv_path)  # View
-    print(f"Processed {len(valid_transactions)} valid transactions")
+    # GET
+    posts = fetch_data(url, method="get")
+    if posts:
+        valid_posts = validate_data(posts, config)
+        save_to_csv(valid_posts, csv_path)
+    # POST
+    created_post = fetch_data(url, method="post", data=new_post)
+    # PUT
+    updated_result = fetch_data(f"{url}/1", method="put", data=updated_post)
+    # PATCH
+    patched_result = fetch_data(f"{url}/1", method="patch", data=partial_update)
+    # DELETE
+    delete_result = fetch_data(f"{url}/1", method="delete")
+    print(f"DEBUG: Processed {len(valid_posts if posts else [])} valid posts")
 
 # Test
-fetch_transactions("https://jsonplaceholder.typicode.com/posts", "data/config.yaml", "data/test.csv")
+url = "https://jsonplaceholder.typicode.com/posts"
+config_path = "data/config.yaml"
+csv_path = "data/test.csv"
+new_post = {"userId": 1, "title": "new post", "body": "content"}
+updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
+partial_update = {"title": "partially updated post"}
+manage_posts(url, config_path, csv_path, new_post, updated_post, partial_update)
 
 # Output:
-# Saved to data/test.csv
-# Processed 0 valid transactions
+# DEBUG: Saved to data/test.csv
+# DEBUG: Processed 98 valid posts
 ```
 
 ### Solution to Exercise 5: Debug an API Fetch Bug
@@ -1111,16 +1327,18 @@ def fetch_data(url):  # Takes URL
     """Fetch JSON data from API."""
     response = requests.get(url)  # Send GET request
     if response.status_code == 200:  # Check success
-        return response.json()  # Parse JSON
-    print(f"Fetch failed: {response.status_code}")  # Log failure
+        data = response.json()  # Parse JSON
+        print(f"DEBUG: Fetched {len(data)} records")  # Debug
+        return data
+    print(f"DEBUG: Fetch failed: {response.status_code}")  # Log failure
     return []  # Return empty list
 
 # Test
-print(fetch_data("https://invalid-url"))
+print(fetch_data("https://jsonplaceholder.typicode.com/posts"))
 
 # Output:
-# Fetch failed: 404
-# []
+# DEBUG: Fetched 100 records
+# [{'userId': 1, 'id': 1, 'title': '...', 'body': '...'}, ...]
 ```
 
 **Explanation**:
@@ -1132,18 +1350,19 @@ print(fetch_data("https://invalid-url"))
 
 ```python
 def explain_rest_statelessness(date):  # Takes date string
-    """Explain REST statelessness, build endpoint, and analyze HTTP method, saving to files."""
+    """Explain REST statelessness, build endpoint, and analyze HTTP methods, saving to files."""
     explanation = (
         "REST APIs are stateless, meaning each request contains all necessary information, "
         "and the server does not store client state between requests. This benefits Hijra Group "
-        "by simplifying transaction fetching, as each API call (e.g., GET /api/transactions/2023-10-01) "
+        "by simplifying content management, as each API call (e.g., GET /posts/2023-10-01) "
         "is independent, reducing server complexity and enabling scalable, reliable data retrieval "
-        "for real-time analytics."
+        "and updates for real-time analytics."
     )
-    endpoint = f"/api/transactions/{date}"  # Build endpoint
+    endpoint = f"/posts/{date}"  # Build endpoint
     http_answer = (
-        "GET retrieves data without modifying the server, suitable for fetching transactions, "
-        "while POST sends data to create or update resources."
+        "GET retrieves posts without modifying the server, POST creates new posts, PUT fully "
+        "updates posts, PATCH partially updates posts, and DELETE removes posts, each suited to "
+        "specific content management tasks."
     )
     with open("ex6_rest.txt", "w") as file:
         file.write(explanation)  # Save explanation
@@ -1151,29 +1370,29 @@ def explain_rest_statelessness(date):  # Takes date string
         file.write(endpoint)  # Save endpoint
     with open("ex6_http.txt", "w") as file:
         file.write(http_answer)  # Save HTTP answer
-    print("Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt")
+    print("DEBUG: Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt")
     return explanation, endpoint, http_answer
 
 # Test
 print(explain_rest_statelessness("2023-10-01"))
 
 # Output:
-# Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt
-# ('REST APIs are stateless, ...', '/api/transactions/2023-10-01', 'GET retrieves data ...')
+# DEBUG: Explanation, endpoint, and HTTP answer saved to ex6_rest.txt, ex6_endpoint.txt, and ex6_http.txt
+# ('REST APIs are stateless, ...', '/posts/2023-10-01', 'GET retrieves data ...')
 ```
 
 ## 4.10 Chapter Summary and Connection to Chapter 5
 
 In this chapter, you’ve mastered:
 
-- **HTTP/REST**: Fetching data with GET requests (O(n) parsing).
+- **HTTP/REST**: Using GET, POST, PUT, PATCH, and DELETE for data management (O(n) parsing for most operations).
 - **requests**: Simplifying API calls (\~100ms latency).
 - **JSON Processing**: Parsing to dictionaries (O(n) for n records).
 - **Pandas Integration**: Converting JSON to DataFrames and CSVs (\~24MB for 1M rows).
 - **MVC**: Structuring code for scalability with visual representation.
 - **White-Space Sensitivity and PEP 8**: Using 4-space indentation, preferring spaces over tabs.
 
-The micro-project built a transaction fetcher, fetching data from a mock API or `data/mock_transactions.json`, validating it with an error summary, and saving to `data/transactions.csv`, with 4-space indentation per PEP 8. It tested edge cases, ensuring robustness for Hijra Group’s analytics. The modular functions (e.g., `fetch_data`, `validate_data`) prepare for encapsulation in classes in Chapter 5’s Object-Oriented Programming, enhancing scalability.
+The micro-project built a post data manager, performing GET, POST, PUT, PATCH, and DELETE operations on `https://jsonplaceholder.typicode.com/posts`, validating data with a structured error summary, and saving fetched posts to `data/posts.csv` with columns `userId`, `id`, `title`, `body`, using 4-space indentation per PEP 8. It tested edge cases, including invalid payloads, ensuring robustness for Hijra Group’s content analytics. The modular functions (e.g., `fetch_data`, `validate_data`) prepare for encapsulation in classes in Chapter 5’s Object-Oriented Programming, enhancing scalability.
 
 ### Connection to Chapter 5
 
@@ -1181,5 +1400,5 @@ Chapter 5 introduces **Object-Oriented Programming for Data Engineering**, build
 
 - **Data Processing**: Extends JSON/DataFrame handling to class-based logic.
 - **Modules**: Reuses `utils.py` in class methods.
-- **MVC**: Evolves into class-based MVC (e.g., `TransactionFetcher` class).
-- **Fintech Context**: Prepares for modular transaction pipelines, maintaining PEP 8 standards.
+- **MVC**: Evolves into class-based MVC (e.g., `PostManager` class).
+- **Fintech Context**: Prepares for modular content pipelines, maintaining PEP 8 standards.
