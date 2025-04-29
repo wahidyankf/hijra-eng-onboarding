@@ -312,6 +312,9 @@ df = pd.read_csv("data/sales.csv")  # Read CSV
 df = df.dropna(subset=["product", "price"])  # Drop missing product/price
 df = df[df["product"].str.startswith("Halal")]  # Filter Halal products
 
+df["price"] = df["price"].astype(float)  # Convert price to float
+df["quantity"] = df["quantity"].astype(int)  # Convert quantity to int
+
 # Compute amount per sale
 df["amount"] = df["price"] * df["quantity"]  # New column for price * quantity
 
