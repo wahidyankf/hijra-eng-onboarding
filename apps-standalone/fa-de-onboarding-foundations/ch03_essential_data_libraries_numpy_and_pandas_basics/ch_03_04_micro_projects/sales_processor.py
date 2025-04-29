@@ -121,7 +121,7 @@ def plot_sales(df, plot_path):  # Takes DataFrame and plot path
 # Define main function
 def main():  # No parameters
     """Main function to process sales data."""
-    csv_path = "data/negative.csv"  # CSV path
+    csv_path = "data/sample.csv"  # CSV path
     config_path = "data/config.yaml"  # YAML path
     json_path = "data/sales_results.json"  # JSON output path
     plot_path = "data/sales_trend.png"  # Plot output path
