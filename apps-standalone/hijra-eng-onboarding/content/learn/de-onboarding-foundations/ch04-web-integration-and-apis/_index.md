@@ -209,7 +209,7 @@ if response_post.status_code == 201:
 
 # PUT: Update a post
 updated_post = {"userId": 1, "id": 1, "title": "updated post", "body": "new content"}
-、上海 response_put = requests.put(f"{base_url}/posts/1", json=updated_post)
+response_put = requests.put(f"{base_url}/posts/1", json=updated_post)
 print("DEBUG: PUT Status Code:", response_put.status_code)
 if response_put.status_code == 200:
     print("DEBUG: PUT Data:", response_put.json())
