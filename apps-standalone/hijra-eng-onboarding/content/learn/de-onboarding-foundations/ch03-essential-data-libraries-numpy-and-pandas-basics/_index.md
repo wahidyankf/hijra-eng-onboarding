@@ -1019,7 +1019,7 @@ print(group_sales("data/sample.csv"))
 ```csv
 product,price,quantity
 Halal Laptop,999.99,2
-Halal Mouse,24.99,5
+Halal Mouse,24.99,10
 ```
 
 **Expected Output**:
@@ -1027,7 +1027,7 @@ Halal Mouse,24.99,5
 ```
 product
 Halal Laptop    1999.98
-Halal Mouse      124.95
+Halal Mouse      249.90
 Name: amount, dtype: float64
 ```
 
@@ -1206,7 +1206,7 @@ print(group_sales("data/sample.csv"))  # Call function
 # Output:
 # product
 # Halal Laptop    1999.98
-# Halal Mouse      124.95
+# Halal Mouse      249.90
 # Name: amount, dtype: float64
 ```
 
