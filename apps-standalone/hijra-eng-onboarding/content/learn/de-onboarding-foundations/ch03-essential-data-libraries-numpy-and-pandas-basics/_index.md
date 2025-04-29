@@ -633,8 +633,21 @@ def load_and_validate_sales(csv_path, config):  # Takes CSV path and config
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     print("Initial DataFrame:")
     print(df)
+
+    # Check for missing required columns
+    missing_fields = [f for f in config["required_fields"] if f not in df.columns]
+    if missing_fields:
+        print(f"Missing columns: {missing_fields}")
+        return pd.DataFrame(), 0, 0
+
     # Drop rows with missing required fields (including NaN price)
     df = df.dropna(subset=config["required_fields"])
+
+    # Early return if DataFrame is empty after dropping required fields
+    if df.empty:
+        print("No data available after dropping missing required fields.")
+        return df, 0, 0
+
     df = df[df["quantity"].apply(utils.is_integer)]  # Ensure quantity is integer
     df["quantity"] = df["quantity"].astype(int)
     df = df[df["quantity"] <= config["max_quantity"]]
@@ -714,7 +727,7 @@ def plot_sales(df, plot_path):  # Takes DataFrame and plot path
 # Define main function
 def main():  # No parameters
     """Main function to process sales data."""
-    csv_path = "data/sales.csv"  # CSV path
+    csv_path = "data/sample.csv"  # CSV path
     config_path = "data/config.yaml"  # YAML path
     json_path = "data/sales_results.json"  # JSON output path
     plot_path = "data/sales_trend.png"  # Plot output path
