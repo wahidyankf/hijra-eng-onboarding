@@ -645,6 +645,7 @@ import requests  # For API requests
 import pandas as pd  # For DataFrame operations
 import yaml  # For YAML parsing
 import os  # For file existence check
+import utils
 
 # Define function to read YAML configuration
 def read_config(config_path):  # Takes config file path
