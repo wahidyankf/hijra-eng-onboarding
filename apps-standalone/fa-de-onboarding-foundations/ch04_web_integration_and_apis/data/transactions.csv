@@ -1,6 +1,0 @@
-transaction_id,product,price,quantity,date
-T001,Halal Laptop,999.99,2,2023-10-01
-T002,Halal Mouse,24.99,10,2023-10-02
-T003,Halal Keyboard,49.99,5,2023-10-03
-T004,,29.99,3,2023-10-04
-T005,Monitor,199.99,2,2023-10-05
