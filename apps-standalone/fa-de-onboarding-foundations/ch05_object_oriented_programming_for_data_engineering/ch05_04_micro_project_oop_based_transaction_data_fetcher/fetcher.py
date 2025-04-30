@@ -80,7 +80,7 @@ class TransactionProcessor(TransactionFetcher):  # Inherits fetcher
         unique_products = df["product"].unique().tolist()  # Unique products
         sales_by_product = df.groupby("product")["amount"].sum()  # Group
         top_products = (
-            sales_by_product.sort_values(ascending=False).head(3).to_dict()
+            sales_by_product.sort_values(ascending=False).head(3).to_dict()  # type: ignore
         )  # Top 3
 
         valid_sales = len(df)  # Count valid
