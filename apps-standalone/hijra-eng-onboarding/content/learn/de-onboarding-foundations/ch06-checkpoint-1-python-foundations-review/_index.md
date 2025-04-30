@@ -292,7 +292,7 @@ flowchart TD
 ### Implementation
 
 ```python
-# File: de-onboarding/utils.py (from Chapter 3)
+# File: de-onboarding/utils.py
 def is_numeric(s, max_decimals=2):  # Check if string is a decimal number
     """Check if string is a decimal number with up to max_decimals."""
     parts = s.split(".")  # Split on decimal point
@@ -325,6 +325,7 @@ def is_integer(x):  # Check if value is an integer
 # File: de-onboarding/processor.py
 import pandas as pd
 import numpy as np
+from utils import is_numeric_value, is_integer, apply_valid_decimals
 
 class SalesProcessor:
     """Class to process sales data."""
@@ -397,9 +398,7 @@ class SalesProcessor:
 import pandas as pd
 import yaml
 import json
-import os
 from processor import SalesProcessor
-from utils import is_numeric_value, is_integer, apply_valid_decimals
 
 def load_config(config_path):  # Load YAML
     """Load YAML configuration."""
@@ -440,7 +439,7 @@ def main():  # Main function
     config = load_config(config_path)  # Load config
     df = load_data(csv_path, json_path)  # Load data
     processor = SalesProcessor(df, config)  # Initialize processor
-    df_valid = processor.validate_data()  # Validate
+    _ = processor.validate_data()  # Validate
     results = processor.compute_metrics()  # Compute metrics
     processor.plot_sales(plot_path)  # Plot
     export_results(results, output_json)  # Export

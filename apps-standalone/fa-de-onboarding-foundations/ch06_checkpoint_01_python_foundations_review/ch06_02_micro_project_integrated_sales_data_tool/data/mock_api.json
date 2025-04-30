@@ -1,0 +1,4 @@
+[
+  { "product": "Halal Monitor", "price": 199.99, "quantity": 3 },
+  { "product": "Non-Halal Item", "price": 50.0, "quantity": 2 }
+]
