@@ -15,7 +15,7 @@ class TransactionFetcher(AbstractFetcher):  # Concrete implementation
         df = pd.read_csv(source)  # Load CSV
         data = df[["product", "price", "quantity"]].to_dict(
             orient="records"
-        )  # Convert to list of dicts
+        )  # type: ignore  # Convert to list of dicts
         return data  # Return transaction data
 
 
@@ -30,7 +30,7 @@ class TransactionValidator:  # Single responsibility: validate data
         return [
             item
             for item in data
-            if item["product"] and item["product"].startswith(prefix)
+            if isinstance(item["product"], str) and item["product"].startswith(prefix)
         ]  # Filter valid
 
 

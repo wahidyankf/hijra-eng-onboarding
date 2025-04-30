@@ -361,16 +361,21 @@ import pandas as pd  # For DataFrame operations
 import yaml  # For YAML parsing
 import json  # For JSON output
 
+
 class AbstractFetcher:  # Abstraction for Dependency Inversion
     def fetch_data(self, source):  # Abstract method
         pass  # No implementation
+
 
 class TransactionFetcher(AbstractFetcher):  # Concrete implementation
     def fetch_data(self, source):  # Method
         print(f"Fetching transactions from {source}")  # Debug
         df = pd.read_csv(source)  # Load CSV
-        data = df[["product", "price", "quantity"]].to_dict(orient="records")  # Convert to list of dicts
+        data = df[["product", "price", "quantity"]].to_dict(
+            orient="records"
+        ) # type: ignore  # Convert to list of dicts
         return data  # Return transaction data
+
 
 class TransactionValidator:  # Single responsibility: validate data
     def __init__(self, config_path):  # Constructor
@@ -380,7 +385,12 @@ class TransactionValidator:  # Single responsibility: validate data
 
     def validate(self, data):  # Validate data
         prefix = self.config["product_prefix"]  # Get prefix
-        return [item for item in data if item["product"] and item["product"].startswith(prefix)]  # Filter valid
+        return [
+            item
+            for item in data
+            if isinstance(item["product"], str) and item["product"].startswith(prefix)
+        ]  # Filter valid
+
 
 class TransactionProcessor:  # Depends on abstraction
     def __init__(self, fetcher, validator):  # Constructor
@@ -390,10 +400,16 @@ class TransactionProcessor:  # Depends on abstraction
     def process(self, source):  # Method
         data = self.fetcher.fetch_data(source)  # Fetch data
         valid_data = self.validator.validate(data)  # Validate
-        total_sales = sum(item["price"] * item["quantity"] for item in valid_data)  # Compute total
-        result = {"total_sales": total_sales, "valid_records": len(valid_data)}  # Create result
+        total_sales = sum(
+            item["price"] * item["quantity"] for item in valid_data
+        )  # Compute total
+        result = {
+            "total_sales": total_sales,
+            "valid_records": len(valid_data),
+        }  # Create result
         print(f"Processed data: {result}")  # Debug
         return result  # Return result
+
 
 # Create objects
 fetcher = TransactionFetcher()  # Instantiate fetcher
