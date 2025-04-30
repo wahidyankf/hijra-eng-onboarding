@@ -1,7 +1,6 @@
 # File: de-onboarding/main.py
 import fetcher  # Import module
 import json  # For JSON export
-import os  # For file checks
 
 
 def export_results(results, json_path):  # Export results

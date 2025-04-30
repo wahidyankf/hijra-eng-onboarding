@@ -596,7 +596,9 @@ def apply_valid_decimals(x, max_decimals):  # Apply decimal validation
 def is_integer(x):  # Check if value is an integer
     """Check if value is an integer when converted to string."""
     return str(x).isdigit()  # Return True for integer strings
+```
 
+```python
 # File: de-onboarding/fetcher.py
 import pandas as pd  # For DataFrame operations
 import yaml  # For YAML parsing
@@ -677,11 +679,12 @@ class TransactionProcessor(TransactionFetcher):  # Inherits fetcher
             "unique_products": unique_products,  # Products
             "top_products": top_products  # Top products
         }, valid_sales  # Return results
+```
 
+```python
 # File: de-onboarding/main.py
 import fetcher  # Import module
 import json  # For JSON export
-import os  # For file checks
 
 def export_results(results, json_path):  # Export results
     """Export results to JSON."""
