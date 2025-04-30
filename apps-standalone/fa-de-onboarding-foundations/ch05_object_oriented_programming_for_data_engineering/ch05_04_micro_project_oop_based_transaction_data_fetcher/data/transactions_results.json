@@ -1,0 +1,9 @@
+{
+  "total_sales": 2499.83,
+  "unique_products": ["Halal Laptop", "Halal Mouse", "Halal Keyboard"],
+  "top_products": {
+    "Halal Laptop": 1999.98,
+    "Halal Keyboard": 249.95000000000002,
+    "Halal Mouse": 249.89999999999998
+  }
+}
